@@ -31,7 +31,6 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
   late AnimationController _progressController;
 
   int _totalSongs = 0;
-  int _wrongGuesses = 0;
 
   List<Song> unplayedSongs = [
     Song("Take On Me", "a-ha", 1984, "spotify:track:2WfaOiMkCvy7F5fcp2zZ8L", 120000),
@@ -106,12 +105,20 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
       return;
     }
 
-    setState(() {
-      currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
-    });
-    drawNextSong();
-  }
+    int nextIndex = (currentPlayerIndex + 1) % players.length;
+    Player nextPlayer = players[nextIndex];
 
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => PlayerSwitchDialog(playerName: nextPlayer.name),
+    ).then((_) {
+      setState(() {
+        currentPlayerIndex = nextIndex; 
+      });
+      drawNextSong(); 
+    });
+  }
   void guessPlacement(int index) {
     if (currentGuessSong == null) return;
     
@@ -132,7 +139,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
       showDialogMsg('Falsch! Es war "${currentGuessSong!.title}" von ${currentGuessSong!.artist} (${currentGuessSong!.year})', Colors.red);
       
       setState(() {
-        _wrongGuesses++;
+        currentPlayer.wrongGuesses++;
         unplayedSongs.insert(0, currentGuessSong!);
       });
     }
@@ -155,6 +162,13 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
   }
 
   void showVictoryScreen(Player winner) {
+    List<Player> leaderboard = List.from(players);
+    leaderboard.sort((a, b) {
+      int scoreComparison = b.score.compareTo(a.score);
+      if (scoreComparison != 0) return scoreComparison;
+      return a.wrongGuesses.compareTo(b.wrongGuesses);
+    });
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -167,10 +181,35 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
             Text('🎉 ${winner.name} GEWINNT! 🎉', textAlign: TextAlign.center),
           ],
         ),
-        content: Text(
-          '${winner.name} hat als Erstes ${widget.cardsToWin} Karten gesammelt!\n\nFehler im gesamten Spiel: $_wrongGuesses',
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 16),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '${winner.name} hat als Erstes ${widget.cardsToWin} Karten gesammelt!',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 20),
+              const Text('Rangliste:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, decoration: TextDecoration.underline)),
+              const SizedBox(height: 10),
+              ...leaderboard.asMap().entries.map((entry) {
+                int rank = entry.key + 1;
+                Player p = entry.value;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('$rank. ${p.name}', style: TextStyle(fontSize: 16, fontWeight: p.name == winner.name ? FontWeight.bold : FontWeight.normal)),
+                      Text('${p.score} Pkt (${p.wrongGuesses} Fehler)', style: const TextStyle(fontSize: 16, color: Colors.black54)),
+                    ],
+                  ),
+                );
+              }),
+            ],
+          ),
         ),
         actionsAlignment: MainAxisAlignment.center,
         actions: [
@@ -257,8 +296,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                 children: [
                   _buildStatItem(Icons.music_note, 'Gesamt', '$_totalSongs', Colors.white),
                   _buildStatItem(Icons.layers, 'Übrig', '$songsLeft', Colors.white),
-                  _buildStatItem(Icons.close, 'Fehler', '$_wrongGuesses', Colors.redAccent.shade100),
-                ],
+_buildStatItem(Icons.close, 'Fehler', '${currentPlayer.wrongGuesses}', Colors.redAccent.shade100),                ],
               ),
             ),
           ),
@@ -410,6 +448,110 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
         const SizedBox(height: 2),
         Text(value, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 16)),
       ],
+    );
+  }
+}
+
+class PlayerSwitchDialog extends StatefulWidget {
+  final String playerName;
+  
+  const PlayerSwitchDialog({super.key, required this.playerName});
+
+  @override
+  State<PlayerSwitchDialog> createState() => _PlayerSwitchDialogState();
+}
+
+class _PlayerSwitchDialogState extends State<PlayerSwitchDialog> with SingleTickerProviderStateMixin {
+  bool _isReady = false;
+  late AnimationController _pulseController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    )..repeat(reverse: true);
+
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() => _isReady = true);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      elevation: 10,
+      backgroundColor: Colors.transparent, 
+      child: Container(
+        padding: const EdgeInsets.all(32),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.deepPurple.shade600, Colors.deepPurple.shade900],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 15, offset: Offset(0, 8))],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ScaleTransition(
+              scale: Tween(begin: 0.85, end: 1.1).animate(
+                CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut)
+              ),
+              child: const Icon(Icons.screen_rotation, color: Colors.white, size: 80),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Gerät weitergeben an:',
+              style: TextStyle(color: Colors.white70, fontSize: 16, fontWeight: FontWeight.w500),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              widget.playerName,
+              style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold, letterSpacing: 1.2),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 40),
+            
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 500),
+              child: _isReady
+                  ? ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.deepPurple,
+                        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        elevation: 5,
+                      ),
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      child: const Text('Bin bereit!', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+                    )
+                  : const Column(
+                      children: [
+                        CircularProgressIndicator(color: Colors.white),
+                        SizedBox(height: 12),
+                      ],
+                    ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

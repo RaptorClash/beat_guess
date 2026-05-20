@@ -3,6 +3,7 @@ import 'song.dart';
 class Player {
   final String name;
   List<Song> timeline = [];
+  int wrongGuesses = 0;
 
   Player({required this.name});
 
