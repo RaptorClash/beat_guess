@@ -5,14 +5,12 @@ import '../models/song.dart';
 
 class PlaylistService {
   Future<List<Song>> fetchSpotifyPlaylist(String url) async {
-    print("--- 🎧 START SPOTIFY FETCH (USER AUTH) ---");
     
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('spotify_access_token');
     final expires = prefs.getInt('spotify_token_expires') ?? 0;
 
     if (token == null || DateTime.now().millisecondsSinceEpoch > expires) {
-      print("FEHLER: Kein gültiger Token! Bitte im Setup-Menü neu einloggen.");
       return [];
     }
 
@@ -20,13 +18,9 @@ class PlaylistService {
     try {
       Uri uri = Uri.parse(url);
       playlistId = uri.pathSegments.last;
-      print("LOG: Playlist-ID extrahiert: $playlistId");
     } catch (e) {
-      print("FEHLER: Ungültige Playlist-URL ($url)");
       return [];
     }
-
-    print("LOG: Auth erfolgreich. Lade Songs herunter...");
 
     String apiHost = "api.spotify.com";
     
@@ -40,7 +34,6 @@ class PlaylistService {
       );
 
       if (playlistResponse.statusCode != 200) {
-        print("FEHLER HTTP ${playlistResponse.statusCode}: ${playlistResponse.body}");
         break;
       }
 

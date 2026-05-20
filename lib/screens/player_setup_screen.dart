@@ -37,23 +37,21 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
 
     int now = DateTime.now().millisecondsSinceEpoch;
 
-    // Wenn der Token in den nächsten 5 Minuten abläuft oder schon abgelaufen ist:
     if (now > expires - 300000) {
       if (refreshToken != null) {
         await _refreshAccessToken(
           refreshToken,
-        ); // Versuche unsichtbare Erneuerung
+        );
       } else {
         setState(
           () => _isLoggedIn = false,
-        ); // Kein Refresh Token da -> Ausgeloggt
+        );
       }
     } else {
-      setState(() => _isLoggedIn = true); // Alles noch gültig
+      setState(() => _isLoggedIn = true);
     }
   }
 
-  // Holt vollautomatisch einen neuen Token über die Spotify API
   Future<void> _refreshAccessToken(String refreshToken) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -62,7 +60,6 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
 
       String credentials = base64Encode(utf8.encode('$clientId:$clientSecret'));
 
-      // Nutze den gleichen Token-Endpunkt wie in deiner main.dart
       var response = await http.post(
         Uri.parse('https://accounts.spotify.com/api/token'),
         headers: {
@@ -76,7 +73,6 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
         var data = jsonDecode(response.body);
         await prefs.setString('spotify_access_token', data['access_token']);
 
-        // Manche APIs schicken einen neuen Refresh-Token mit, den speichern wir dann auch
         if (data['refresh_token'] != null) {
           await prefs.setString('spotify_refresh_token', data['refresh_token']);
         }
@@ -206,9 +202,9 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
           IconButton(
             icon: Badge(
               isLabelVisible:
-                  !_isLoggedIn, // Roter Punkt NUR wenn NICHT eingeloggt
+                  !_isLoggedIn,
               backgroundColor: Colors.redAccent,
-              smallSize: 12, // Größe des Punktes
+              smallSize: 12,
               child: const Icon(Icons.settings),
             ),
             tooltip: 'API Setup',
@@ -219,7 +215,7 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
                   builder: (context) => const ApiSettingsScreen(),
                 ),
               );
-              // Wenn der User aus den Einstellungen zurückkommt, prüfen wir neu:
+
               _checkAndRefreshLogin();
             },
           ),

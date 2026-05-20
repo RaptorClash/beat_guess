@@ -74,7 +74,6 @@ class _ApiSettingsScreenState extends State<ApiSettingsScreen> {
         webOnlyWindowName: '_self',
       );
     } catch (e) {
-      print("Konnte den Browser nicht öffnen: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Fehler: Konnte den Browser nicht öffnen!"),

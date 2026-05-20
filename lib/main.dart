@@ -42,11 +42,9 @@ Future<void> _exchangeCodeForToken(String code) async {
     String clientSecret = prefs.getString('spotify_client_secret') ?? '';
 
     if (clientId.isEmpty || clientSecret.isEmpty) {
-      print("🚨 FEHLER: Keine Keys im Speicher gefunden!");
       return;
     }
 
-    print("LOG: Tausche Code gegen Token...");
     String credentials = base64Encode(utf8.encode('$clientId:$clientSecret'));
 
     String redirectUri = kIsWeb
@@ -69,11 +67,10 @@ Future<void> _exchangeCodeForToken(String code) async {
     if (response.statusCode == 200) {
       var data = jsonDecode(response.body);
       String token = data['access_token'];
-      String? refreshToken = data['refresh_token']; // NEU: Refresh Token holen
+      String? refreshToken = data['refresh_token'];
 
       await prefs.setString('spotify_access_token', token);
 
-      // NEU: Refresh Token speichern, falls er mitgeschickt wurde
       if (refreshToken != null) {
         await prefs.setString('spotify_refresh_token', refreshToken);
       }
@@ -82,9 +79,6 @@ Future<void> _exchangeCodeForToken(String code) async {
         'spotify_token_expires',
         DateTime.now().millisecondsSinceEpoch + 3600000,
       );
-      print("✅ SUCCESS: Spotify Token erfolgreich ausgetauscht!");
-    } else {
-      print("❌ FEHLER beim Token-Tausch: ${response.statusCode}");
     }
   } catch (e) {
     print("Fehler beim Verarbeiten des Logins: $e");

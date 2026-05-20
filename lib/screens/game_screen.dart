@@ -143,7 +143,6 @@ class _GameScreenState extends State<GameScreen>
   }
 
   void nextTurn() {
-    // Prüfe Siegbedingungen
     if (!widget.playUntilAllFinish &&
         players.any((p) => p.score >= widget.cardsToWin)) {
       showVictoryScreen();
@@ -156,7 +155,6 @@ class _GameScreenState extends State<GameScreen>
       return;
     }
 
-    // Falls keine Songs mehr da sind, beende ebenfalls
     if (unplayedSongs.isEmpty && currentGuessSong == null) {
       showVictoryScreen();
       return;
@@ -164,7 +162,6 @@ class _GameScreenState extends State<GameScreen>
 
     int nextIndex = (currentPlayerIndex + 1) % players.length;
 
-    // NEU: Überspringe Spieler, die im "Alle spielen"-Modus bereits fertig sind
     if (widget.playUntilAllFinish) {
       int safetyCounter = 0;
       while (players[nextIndex].score >= widget.cardsToWin &&
@@ -195,7 +192,7 @@ class _GameScreenState extends State<GameScreen>
     _progressController.stop();
 
     Player currentPlayer = players[currentPlayerIndex];
-    currentPlayer.turns++; // NEU: Zug zählen
+    currentPlayer.turns++;
 
     bool isCorrect = true;
     int songYear = currentGuessSong!.year;
@@ -226,7 +223,6 @@ class _GameScreenState extends State<GameScreen>
     });
   }
 
-  // NEU: Sieg-Screen angepasst
   void showVictoryScreen() {
     List<Player> leaderboard = List.from(players);
     leaderboard.sort((a, b) {
@@ -234,7 +230,6 @@ class _GameScreenState extends State<GameScreen>
       if (scoreComparison != 0) return scoreComparison;
 
       if (widget.playUntilAllFinish) {
-        // Weniger Züge sind besser
         int turnComparison = a.turns.compareTo(b.turns);
         if (turnComparison != 0) return turnComparison;
       }
@@ -704,8 +699,6 @@ class _GameScreenState extends State<GameScreen>
         scrollDirection: Axis.horizontal,
         itemCount: players.length,
         itemBuilder: (context, index) {
-          // Clevere Mathematik: So steht der aktuelle Spieler immer auf Position 0
-          // und die nachfolgenden Spieler reihen sich chronologisch dahinter ein.
           int actualIndex = (currentPlayerIndex + index) % players.length;
           Player p = players[actualIndex];
           bool isCurrent = index == 0;
@@ -715,7 +708,6 @@ class _GameScreenState extends State<GameScreen>
             padding: const EdgeInsets.symmetric(horizontal: 16),
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              // Der aktuelle Spieler bekommt ein auffälliges Gelb (Amber), der Rest bleibt dezent
               color: isCurrent ? Colors.amber : Colors.white,
               borderRadius: BorderRadius.circular(20),
               border: isCurrent

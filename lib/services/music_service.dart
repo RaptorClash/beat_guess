@@ -10,7 +10,6 @@ class MusicService {
 
   Future<void> playSongSnippet(Song song) async {
     if (song.spotifyUri.isEmpty) {
-      print("FEHLER: Song hat keine Spotify URI.");
       return;
     }
 
@@ -19,8 +18,6 @@ class MusicService {
       final token = prefs.getString('spotify_access_token');
 
       _playbackTimer?.cancel();
-
-      print("SCHRITT 1: Sende Play-Befehl an Spotify für '${song.title}'...");
 
       int startPosition = (song.durationMs * 0.3).round();
 
@@ -37,7 +34,6 @@ class MusicService {
       );
 
       if (response.statusCode == 204 || response.statusCode == 200) {
-        print("SCHRITT 2: Song läuft auf Spotify!");
         isPlaying = true;
         
         _playbackTimer = Timer(const Duration(seconds: 30), () {
@@ -57,7 +53,6 @@ class MusicService {
   }
 
   Future<void> stopMusic() async {
-    print("Stoppe Spotify Playback...");
     isPlaying = false;
     
     _playbackTimer?.cancel(); 
