@@ -10,12 +10,14 @@ class GameScreen extends StatefulWidget {
   final List<String> playerNames;
   final int cardsToWin;
   final String playlistUrl;
+  final bool playUntilAllFinish;
 
   const GameScreen({
     super.key,
     required this.playerNames,
     required this.cardsToWin,
     required this.playlistUrl,
+    required this.playUntilAllFinish,
   });
 
   @override
@@ -141,14 +143,37 @@ class _GameScreenState extends State<GameScreen>
   }
 
   void nextTurn() {
-    Player current = players[currentPlayerIndex];
+    // Prüfe Siegbedingungen
+    if (!widget.playUntilAllFinish &&
+        players.any((p) => p.score >= widget.cardsToWin)) {
+      showVictoryScreen();
+      return;
+    }
 
-    if (current.score >= widget.cardsToWin) {
-      showVictoryScreen(current);
+    if (widget.playUntilAllFinish &&
+        players.every((p) => p.score >= widget.cardsToWin)) {
+      showVictoryScreen();
+      return;
+    }
+
+    // Falls keine Songs mehr da sind, beende ebenfalls
+    if (unplayedSongs.isEmpty && currentGuessSong == null) {
+      showVictoryScreen();
       return;
     }
 
     int nextIndex = (currentPlayerIndex + 1) % players.length;
+
+    // NEU: Überspringe Spieler, die im "Alle spielen"-Modus bereits fertig sind
+    if (widget.playUntilAllFinish) {
+      int safetyCounter = 0;
+      while (players[nextIndex].score >= widget.cardsToWin &&
+          safetyCounter < players.length) {
+        nextIndex = (nextIndex + 1) % players.length;
+        safetyCounter++;
+      }
+    }
+
     Player nextPlayer = players[nextIndex];
 
     showDialog(
@@ -170,6 +195,8 @@ class _GameScreenState extends State<GameScreen>
     _progressController.stop();
 
     Player currentPlayer = players[currentPlayerIndex];
+    currentPlayer.turns++; // NEU: Zug zählen
+
     bool isCorrect = true;
     int songYear = currentGuessSong!.year;
 
@@ -199,28 +226,23 @@ class _GameScreenState extends State<GameScreen>
     });
   }
 
-  void showDialogMsg(String msg, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          msg,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: color,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        duration: const Duration(milliseconds: 2000),
-      ),
-    );
-  }
-
-  void showVictoryScreen(Player winner) {
+  // NEU: Sieg-Screen angepasst
+  void showVictoryScreen() {
     List<Player> leaderboard = List.from(players);
     leaderboard.sort((a, b) {
       int scoreComparison = b.score.compareTo(a.score);
       if (scoreComparison != 0) return scoreComparison;
+
+      if (widget.playUntilAllFinish) {
+        // Weniger Züge sind besser
+        int turnComparison = a.turns.compareTo(b.turns);
+        if (turnComparison != 0) return turnComparison;
+      }
+
       return a.wrongGuesses.compareTo(b.wrongGuesses);
     });
+
+    Player winner = leaderboard.first;
 
     showDialog(
       context: context,
@@ -240,7 +262,9 @@ class _GameScreenState extends State<GameScreen>
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                '${winner.name} hat als Erstes ${widget.cardsToWin} Karten gesammelt!',
+                widget.playUntilAllFinish
+                    ? 'Alle Spieler haben ${widget.cardsToWin} Karten gesammelt!\n${winner.name} war am schnellsten.'
+                    : '${winner.name} hat als Erstes ${widget.cardsToWin} Karten gesammelt!',
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 16),
               ),
@@ -272,7 +296,9 @@ class _GameScreenState extends State<GameScreen>
                         ),
                       ),
                       Text(
-                        '${p.score} Pkt (${p.wrongGuesses} Fehler)',
+                        widget.playUntilAllFinish
+                            ? '${p.score} Pkt | ${p.turns} Züge'
+                            : '${p.score} Pkt (${p.wrongGuesses} F)',
                         style: const TextStyle(
                           fontSize: 16,
                           color: Colors.black54,
@@ -303,6 +329,21 @@ class _GameScreenState extends State<GameScreen>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void showDialogMsg(String msg, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          msg,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        duration: const Duration(milliseconds: 2000),
       ),
     );
   }
@@ -694,10 +735,16 @@ class _GameScreenState extends State<GameScreen>
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
-                  isCurrent ? Icons.play_arrow : Icons.hourglass_bottom,
+                  isCurrent
+                      ? Icons.play_arrow
+                      : (p.score >= widget.cardsToWin
+                            ? Icons.check_circle
+                            : Icons.hourglass_bottom),
                   color: isCurrent
                       ? Colors.black87
-                      : Colors.deepPurple.shade300,
+                      : (p.score >= widget.cardsToWin
+                            ? Colors.green
+                            : Colors.deepPurple.shade300),
                   size: 16,
                 ),
                 const SizedBox(width: 6),
