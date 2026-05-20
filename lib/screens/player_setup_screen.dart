@@ -16,19 +16,82 @@ class PlayerSetupScreen extends StatefulWidget {
 class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
   final List<String> players = [];
   final TextEditingController _nameController = TextEditingController();
-
   final TextEditingController _playlistController = TextEditingController();
   int _cardsToWin = 10;
   bool _playUntilAllFinish = false;
-
   bool _isStarting = false;
-
+  bool _isLoggedIn = true;
   List<Map<String, String>> _savedPlaylists = [];
 
   @override
   void initState() {
     super.initState();
     _loadSavedPlaylists();
+    _checkAndRefreshLogin();
+  }
+
+  Future<void> _checkAndRefreshLogin() async {
+    final prefs = await SharedPreferences.getInstance();
+    int expires = prefs.getInt('spotify_token_expires') ?? 0;
+    String? refreshToken = prefs.getString('spotify_refresh_token');
+
+    int now = DateTime.now().millisecondsSinceEpoch;
+
+    // Wenn der Token in den nächsten 5 Minuten abläuft oder schon abgelaufen ist:
+    if (now > expires - 300000) {
+      if (refreshToken != null) {
+        await _refreshAccessToken(
+          refreshToken,
+        ); // Versuche unsichtbare Erneuerung
+      } else {
+        setState(
+          () => _isLoggedIn = false,
+        ); // Kein Refresh Token da -> Ausgeloggt
+      }
+    } else {
+      setState(() => _isLoggedIn = true); // Alles noch gültig
+    }
+  }
+
+  // Holt vollautomatisch einen neuen Token über die Spotify API
+  Future<void> _refreshAccessToken(String refreshToken) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String clientId = prefs.getString('spotify_client_id') ?? '';
+      String clientSecret = prefs.getString('spotify_client_secret') ?? '';
+
+      String credentials = base64Encode(utf8.encode('$clientId:$clientSecret'));
+
+      // Nutze den gleichen Token-Endpunkt wie in deiner main.dart
+      var response = await http.post(
+        Uri.parse('https://accounts.spotify.com/api/token'),
+        headers: {
+          'Authorization': 'Basic $credentials',
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: {'grant_type': 'refresh_token', 'refresh_token': refreshToken},
+      );
+
+      if (response.statusCode == 200) {
+        var data = jsonDecode(response.body);
+        await prefs.setString('spotify_access_token', data['access_token']);
+
+        // Manche APIs schicken einen neuen Refresh-Token mit, den speichern wir dann auch
+        if (data['refresh_token'] != null) {
+          await prefs.setString('spotify_refresh_token', data['refresh_token']);
+        }
+        await prefs.setInt(
+          'spotify_token_expires',
+          DateTime.now().millisecondsSinceEpoch + 3600000,
+        );
+
+        setState(() => _isLoggedIn = true);
+      } else {
+        setState(() => _isLoggedIn = false);
+      }
+    } catch (e) {
+      setState(() => _isLoggedIn = false);
+    }
   }
 
   Future<void> _loadSavedPlaylists() async {
@@ -141,7 +204,13 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings),
+            icon: Badge(
+              isLabelVisible:
+                  !_isLoggedIn, // Roter Punkt NUR wenn NICHT eingeloggt
+              backgroundColor: Colors.redAccent,
+              smallSize: 12, // Größe des Punktes
+              child: const Icon(Icons.settings),
+            ),
             tooltip: 'API Setup',
             onPressed: () async {
               await Navigator.push(
@@ -150,6 +219,8 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
                   builder: (context) => const ApiSettingsScreen(),
                 ),
               );
+              // Wenn der User aus den Einstellungen zurückkommt, prüfen wir neu:
+              _checkAndRefreshLogin();
             },
           ),
         ],

@@ -57,7 +57,7 @@ class _ApiSettingsScreenState extends State<ApiSettingsScreen> {
         : "beatguess://callback";
     String authHost = "accounts.spotify.com";
     String scopes =
-        "playlist-read-private playlist-read-collaborative user-read-private user-read-email user-modify-playback-state";
+        "playlist-read-private playlist-read-collaborative user-read-private user-read-email user-modify-playback-state offline_access";
 
     Uri authUri = Uri.https(authHost, '/authorize', {
       'client_id': clientId,

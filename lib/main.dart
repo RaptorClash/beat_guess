@@ -6,7 +6,9 @@ import 'screens/start_screen.dart';
 import 'package:flutter/foundation.dart';
 import 'package:app_links/app_links.dart';
 
-import 'services/url_helper_stub.dart' if (dart.library.html) 'services/url_helper_web.dart' as url_helper;
+import 'services/url_helper_stub.dart'
+    if (dart.library.html) 'services/url_helper_web.dart'
+    as url_helper;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -46,8 +48,10 @@ Future<void> _exchangeCodeForToken(String code) async {
 
     print("LOG: Tausche Code gegen Token...");
     String credentials = base64Encode(utf8.encode('$clientId:$clientSecret'));
-    
-    String redirectUri = kIsWeb ? "http://127.0.0.1:8080/" : "beatguess://callback";
+
+    String redirectUri = kIsWeb
+        ? "http://127.0.0.1:8080/"
+        : "beatguess://callback";
 
     var response = await http.post(
       Uri.parse('https://accounts.spotify.com/api/token'),
@@ -63,9 +67,21 @@ Future<void> _exchangeCodeForToken(String code) async {
     );
 
     if (response.statusCode == 200) {
-      String token = jsonDecode(response.body)['access_token'];
+      var data = jsonDecode(response.body);
+      String token = data['access_token'];
+      String? refreshToken = data['refresh_token']; // NEU: Refresh Token holen
+
       await prefs.setString('spotify_access_token', token);
-      await prefs.setInt('spotify_token_expires', DateTime.now().millisecondsSinceEpoch + 3600000);
+
+      // NEU: Refresh Token speichern, falls er mitgeschickt wurde
+      if (refreshToken != null) {
+        await prefs.setString('spotify_refresh_token', refreshToken);
+      }
+
+      await prefs.setInt(
+        'spotify_token_expires',
+        DateTime.now().millisecondsSinceEpoch + 3600000,
+      );
       print("✅ SUCCESS: Spotify Token erfolgreich ausgetauscht!");
     } else {
       print("❌ FEHLER beim Token-Tausch: ${response.statusCode}");
