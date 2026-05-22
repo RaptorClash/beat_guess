@@ -5,6 +5,9 @@ import '../widgets/song_card.dart';
 import '../widgets/timeline_slot.dart';
 import '../services/music_service.dart';
 import '../services/playlist_service.dart';
+import '../widgets/player_switch_dialog.dart';
+import '../widgets/game_stats_banner.dart';
+import '../widgets/player_queue_list.dart';
 
 class GameScreen extends StatefulWidget {
   final List<String> playerNames;
@@ -347,9 +350,7 @@ class _GameScreenState extends State<GameScreen>
   Widget build(BuildContext context) {
     if (_isGameLoading) {
       return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(color: Colors.deepPurple),
-        ),
+        body: Center(child: CircularProgressIndicator(color: Colors.deepPurple)),
       );
     }
 
@@ -358,540 +359,186 @@ class _GameScreenState extends State<GameScreen>
 
     return Scaffold(
       backgroundColor: Colors.deepPurple.shade50,
-      appBar: AppBar(
-        toolbarHeight: 70,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.deepPurple,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black26,
-                    blurRadius: 4,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.person, color: Colors.white, size: 18),
-                  const SizedBox(width: 8),
-                  Text(
-                    currentPlayer.name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                const Text(
-                  'Punkte',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.black54,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  '${currentPlayer.score} / ${widget.cardsToWin}',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.deepPurple,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
+      appBar: _buildAppBar(currentPlayer), 
       body: Column(
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.deepPurple.shade800,
-                    Colors.deepPurple.shade600,
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black26,
-                    blurRadius: 6,
-                    offset: Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildStatItem(
-                    Icons.music_note,
-                    'Gesamt',
-                    '$_totalSongs',
-                    Colors.white,
-                  ),
-                  _buildStatItem(
-                    Icons.layers,
-                    'Übrig',
-                    '$songsLeft',
-                    Colors.white,
-                  ),
-                  _buildStatItem(
-                    Icons.close,
-                    'Fehler',
-                    '${currentPlayer.wrongGuesses}',
-                    Colors.redAccent.shade100,
-                  ),
-                ],
-              ),
+            child: GameStatsBanner(
+              totalSongs: _totalSongs,
+              songsLeft: songsLeft,
+              wrongGuesses: currentPlayer.wrongGuesses,
             ),
           ),
-
           const SizedBox(height: 16),
-          _buildPlayerQueue(),
+          PlayerQueueList(
+            players: players,
+            currentPlayerIndex: currentPlayerIndex,
+            cardsToWin: widget.cardsToWin,
+          ),
           const SizedBox(height: 16),
-
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 10,
-                    offset: Offset(0, 4),
-                  ),
-                ],
-              ),
-              width: double.infinity,
-              child: Column(
-                children: [
-                  const Text(
-                    "Zieh die Karte an die richtige Stelle!",
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black54,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  if (currentGuessSong != null) ...[
-                    AnimatedBuilder(
-                      animation: _progressController,
-                      builder: (context, child) {
-                        bool isPlaying = _progressController.isAnimating;
-
-                        return Column(
-                          children: [
-                            SizedBox(
-                              height: 50,
-                              width: double.infinity,
-                              child: ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: isPlaying
-                                      ? Colors.green
-                                      : Colors.deepPurple,
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  elevation: isPlaying ? 6 : 2,
-                                ),
-                                onPressed: _isMusicLoading
-                                    ? null
-                                    : () async {
-                                        if (isPlaying) return;
-
-                                        setState(() => _isMusicLoading = true);
-                                        await _musicService.playSongSnippet(
-                                          currentGuessSong!,
-                                        );
-
-                                        setState(() => _isMusicLoading = false);
-                                        _progressController.forward(from: 0.0);
-                                      },
-                                icon: _isMusicLoading
-                                    ? const SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
-                                          color: Colors.white,
-                                          strokeWidth: 2,
-                                        ),
-                                      )
-                                    : Icon(
-                                        isPlaying
-                                            ? Icons.music_note
-                                            : Icons.play_arrow,
-                                      ),
-                                label: Text(
-                                  _isMusicLoading
-                                      ? "Lade Audio..."
-                                      : (isPlaying
-                                            ? "Song wird abgespielt..."
-                                            : "Song abspielen (30s)"),
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ),
-
-                            const SizedBox(height: 12),
-
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(10),
-                              child: LinearProgressIndicator(
-                                value: _progressController.value,
-                                minHeight: 8,
-                                backgroundColor: Colors.deepPurple.shade100,
-                                color: Colors.deepPurple,
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 20),
-
-                    Draggable<Song>(
-                      data: currentGuessSong,
-                      feedback: SizedBox(
-                        width: MediaQuery.of(context).size.width * 0.85,
-                        child: Opacity(
-                          opacity: 0.9,
-                          child: SongCard(
-                            song: currentGuessSong!,
-                            isSecret: true,
-                          ),
-                        ),
-                      ),
-                      childWhenDragging: Opacity(
-                        opacity: 0.4,
-                        child: SongCard(
-                          song: currentGuessSong!,
-                          isSecret: true,
-                        ),
-                      ),
-                      child: SongCard(song: currentGuessSong!, isSecret: true),
-                    ),
-                  ] else
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 20.0),
-                      child: Text(
-                        "Stapel leer! 🎉",
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.deepPurple,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
+            child: _buildPlayArea(),
           ),
-
           const SizedBox(height: 16),
-
           Expanded(
-            child: Builder(
-              builder: (context) {
-                List<YearGroup> groups = [];
-                for (var song in currentPlayer.timeline) {
-                  if (groups.isEmpty || groups.last.year != song.year) {
-                    groups.add(YearGroup(song.year, [song]));
-                  } else {
-                    groups.last.songs.add(song);
-                  }
-                }
-
-                int getFlatIndex(int groupIndex) {
-                  int flatIndex = 0;
-                  for (int i = 0; i < groupIndex; i++) {
-                    flatIndex += groups[i].songs.length;
-                  }
-                  return flatIndex;
-                }
-
-                return ListView.builder(
-                  padding: const EdgeInsets.only(bottom: 50),
-                  itemCount: groups.length + 1,
-                  itemBuilder: (context, index) {
-                    return Column(
-                      children: [
-                        if (currentGuessSong != null)
-                          TimelineSlot(
-                            onAccept: (_) =>
-                                guessPlacement(getFlatIndex(index)),
-                          ),
-
-                        if (index < groups.length)
-                          YearGroupCard(group: groups[index]),
-                      ],
-                    );
-                  },
-                );
-              },
-            ),
+            child: _buildTimeline(currentPlayer),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildStatItem(
-    IconData icon,
-    String label,
-    String value,
-    Color color,
-  ) {
-    return Column(
-      children: [
-        Row(
-          children: [
-            Icon(icon, size: 14, color: color),
-            const SizedBox(width: 4),
-            Text(label, style: TextStyle(color: color, fontSize: 12)),
-          ],
-        ),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: TextStyle(
-            color: color,
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
-        ),
-      ],
-    );
-  }
+  // --- HILFSMETHODEN FÜR DIE UI --- //
 
-  Widget _buildPlayerQueue() {
-    return SizedBox(
-      height: 40,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: players.length,
-        itemBuilder: (context, index) {
-          int actualIndex = (currentPlayerIndex + index) % players.length;
-          Player p = players[actualIndex];
-          bool isCurrent = index == 0;
-
-          return Container(
-            margin: EdgeInsets.only(left: index == 0 ? 16 : 0, right: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            alignment: Alignment.center,
+  PreferredSizeWidget _buildAppBar(Player currentPlayer) {
+    return AppBar(
+      toolbarHeight: 70,
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      automaticallyImplyLeading: false,
+      title: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: isCurrent ? Colors.amber : Colors.white,
+              color: Colors.deepPurple,
               borderRadius: BorderRadius.circular(20),
-              border: isCurrent
-                  ? null
-                  : Border.all(color: Colors.deepPurple.shade200, width: 1.5),
-              boxShadow: isCurrent
-                  ? const [
-                      BoxShadow(
-                        color: Colors.black26,
-                        blurRadius: 4,
-                        offset: Offset(0, 2),
-                      ),
-                    ]
-                  : [],
+              boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))],
             ),
             child: Row(
-              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  isCurrent
-                      ? Icons.play_arrow
-                      : (p.score >= widget.cardsToWin
-                            ? Icons.check_circle
-                            : Icons.hourglass_bottom),
-                  color: isCurrent
-                      ? Colors.black87
-                      : (p.score >= widget.cardsToWin
-                            ? Colors.green
-                            : Colors.deepPurple.shade300),
-                  size: 16,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  isCurrent ? "Am Zug: ${p.name}" : p.name,
-                  style: TextStyle(
-                    color: isCurrent
-                        ? Colors.black87
-                        : Colors.deepPurple.shade400,
-                    fontWeight: isCurrent ? FontWeight.bold : FontWeight.w600,
-                  ),
-                ),
+                const Icon(Icons.person, color: Colors.white, size: 18),
+                const SizedBox(width: 8),
+                Text(currentPlayer.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
               ],
             ),
-          );
-        },
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              const Text('Punkte', style: TextStyle(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.bold)),
+              Text('${currentPlayer.score} / ${widget.cardsToWin}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.deepPurple)),
+            ],
+          ),
+        ],
       ),
     );
   }
-}
 
-class PlayerSwitchDialog extends StatefulWidget {
-  final String playerName;
-
-  const PlayerSwitchDialog({super.key, required this.playerName});
-
-  @override
-  State<PlayerSwitchDialog> createState() => _PlayerSwitchDialogState();
-}
-
-class _PlayerSwitchDialogState extends State<PlayerSwitchDialog>
-    with SingleTickerProviderStateMixin {
-  bool _isReady = false;
-  late AnimationController _pulseController;
-
-  @override
-  void initState() {
-    super.initState();
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    )..repeat(reverse: true);
-
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
-        setState(() => _isReady = true);
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _pulseController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      elevation: 10,
-      backgroundColor: Colors.transparent,
-      child: Container(
-        padding: const EdgeInsets.all(32),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.deepPurple.shade600, Colors.deepPurple.shade900],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: const [
-            BoxShadow(
-              color: Colors.black45,
-              blurRadius: 15,
-              offset: Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ScaleTransition(
-              scale: Tween(begin: 0.85, end: 1.1).animate(
-                CurvedAnimation(
-                  parent: _pulseController,
-                  curve: Curves.easeInOut,
-                ),
-              ),
-              child: const Icon(
-                Icons.screen_rotation,
-                color: Colors.white,
-                size: 80,
-              ),
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              'Gerät weitergeben an:',
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              widget.playerName,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 40),
-
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 500),
-              child: _isReady
-                  ? ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: Colors.deepPurple,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 32,
-                          vertical: 16,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        elevation: 5,
-                      ),
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                      },
-                      child: const Text(
-                        'Bin bereit!',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    )
-                  : const Column(
-                      children: [
-                        CircularProgressIndicator(color: Colors.white),
-                        SizedBox(height: 12),
-                      ],
-                    ),
-            ),
-          ],
-        ),
+  Widget _buildPlayArea() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4))],
       ),
+      width: double.infinity,
+      child: Column(
+        children: [
+          const Text("Zieh die Karte an die richtige Stelle!", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black54)),
+          const SizedBox(height: 12),
+          if (currentGuessSong != null) ...[
+            AnimatedBuilder(
+              animation: _progressController,
+              builder: (context, child) {
+                bool isPlaying = _progressController.isAnimating;
+                return Column(
+                  children: [
+                    SizedBox(
+                      height: 50,
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isPlaying ? Colors.green : Colors.deepPurple,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          elevation: isPlaying ? 6 : 2,
+                        ),
+                        onPressed: _isMusicLoading ? null : () async {
+                          if (isPlaying) return;
+                          setState(() => _isMusicLoading = true);
+                          await _musicService.playSongSnippet(currentGuessSong!);
+                          setState(() => _isMusicLoading = false);
+                          _progressController.forward(from: 0.0);
+                        },
+                        icon: _isMusicLoading
+                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                            : Icon(isPlaying ? Icons.music_note : Icons.play_arrow),
+                        label: Text(
+                          _isMusicLoading ? "Lade Audio..." : (isPlaying ? "Song wird abgespielt..." : "Song abspielen (30s)"),
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: LinearProgressIndicator(
+                        value: _progressController.value,
+                        minHeight: 8,
+                        backgroundColor: Colors.deepPurple.shade100,
+                        color: Colors.deepPurple,
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 20),
+            Draggable<Song>(
+              data: currentGuessSong,
+              feedback: SizedBox(
+                width: MediaQuery.of(context).size.width * 0.85,
+                child: Opacity(opacity: 0.9, child: SongCard(song: currentGuessSong!, isSecret: true)),
+              ),
+              childWhenDragging: Opacity(opacity: 0.4, child: SongCard(song: currentGuessSong!, isSecret: true)),
+              child: SongCard(song: currentGuessSong!, isSecret: true),
+            ),
+          ] else
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 20.0),
+              child: Text("Stapel leer! 🎉", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.deepPurple)),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimeline(Player currentPlayer) {
+    List<YearGroup> groups = [];
+    for (var song in currentPlayer.timeline) {
+      if (groups.isEmpty || groups.last.year != song.year) {
+        groups.add(YearGroup(song.year, [song]));
+      } else {
+        groups.last.songs.add(song);
+      }
+    }
+
+    int getFlatIndex(int groupIndex) {
+      int flatIndex = 0;
+      for (int i = 0; i < groupIndex; i++) {
+        flatIndex += groups[i].songs.length;
+      }
+      return flatIndex;
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.only(bottom: 50),
+      itemCount: groups.length + 1,
+      itemBuilder: (context, index) {
+        return Column(
+          children: [
+            if (currentGuessSong != null)
+              TimelineSlot(onAccept: (_) => guessPlacement(getFlatIndex(index))),
+            if (index < groups.length)
+              YearGroupCard(group: groups[index]), // Setzt voraus, dass YearGroupCard importiert ist
+          ],
+        );
+      },
     );
   }
 }

@@ -42,6 +42,7 @@ Future<void> _exchangeCodeForToken(String code) async {
     String clientSecret = prefs.getString('spotify_client_secret') ?? '';
 
     if (clientId.isEmpty || clientSecret.isEmpty) {
+      print("FEHLER: Client ID oder Secret fehlen in den SharedPreferences!");
       return;
     }
 
@@ -51,8 +52,11 @@ Future<void> _exchangeCodeForToken(String code) async {
         ? "http://127.0.0.1:8080/"
         : "beatguess://callback";
 
+    print("Sende Token-Anfrage an Spotify..."); // <-- LOG
+
+    // HIER IST DIE ECHTE SPOTIFY URL:
     var response = await http.post(
-      Uri.parse('https://accounts.spotify.com/api/token'),
+      Uri.parse('https://accounts.spotify.com/api/token'), 
       headers: {
         'Authorization': 'Basic $credentials',
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -79,9 +83,14 @@ Future<void> _exchangeCodeForToken(String code) async {
         'spotify_token_expires',
         DateTime.now().millisecondsSinceEpoch + 3600000,
       );
+      
+      print("ERFOLG: Spotify Token wurde gespeichert!"); // <-- LOG
+    } else {
+      print("FEHLER vom Spotify-Server: Code ${response.statusCode}"); // <-- LOG
+      print("Antwort: ${response.body}"); // <-- LOG (Ganz wichtig für uns!)
     }
   } catch (e) {
-    print("Fehler beim Verarbeiten des Logins: $e");
+    print("FEHLER beim Verarbeiten des Logins: $e");
   }
 }
 
