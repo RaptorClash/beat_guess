@@ -2,37 +2,42 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:app_links/app_links.dart';
 import 'screens/start_screen.dart';
+import 'utils/NotificationHelper.dart';
 
-import 'services/spotify_auth_service.dart'; 
+import 'services/spotify_auth_service.dart';
 
 import 'services/url_helper_stub.dart'
     if (dart.library.html) 'services/url_helper_web.dart'
     as url_helper;
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  try {
+    WidgetsFlutterBinding.ensureInitialized();
 
-  final authService = SpotifyAuthService();
+    final authService = SpotifyAuthService();
 
-  String? code = url_helper.getWebUrlCode();
-  if (code != null) {
-    url_helper.clearWebUrl();
-  }
+    String? code = url_helper.getWebUrlCode();
+    if (code != null) {
+      url_helper.clearWebUrl();
+    }
 
-  if (!kIsWeb) {
-    final appLinks = AppLinks();
-    appLinks.uriLinkStream.listen((uri) {
-      if (uri.queryParameters.containsKey('code')) {
-        String appCode = uri.queryParameters['code']!;
-        authService.exchangeCodeForToken(appCode);
-      }
-    });
-  }
+    if (!kIsWeb) {
+      final appLinks = AppLinks();
+      appLinks.uriLinkStream.listen((uri) {
+        if (uri.queryParameters.containsKey('code')) {
+          String appCode = uri.queryParameters['code']!;
+          authService.exchangeCodeForToken(appCode);
+        }
+      });
+    }
 
-  runApp(const BeatGuessApp());
+    runApp(const BeatGuessApp());
 
-  if (code != null) {
-    await authService.exchangeCodeForToken(code);
+    if (code != null) {
+      await authService.exchangeCodeForToken(code);
+    }
+  } catch (e) {
+    NotificationHelper.showError("Fehler beim starten von BeatGuess");
   }
 }
 
@@ -44,6 +49,7 @@ class BeatGuessApp extends StatelessWidget {
     return MaterialApp(
       title: 'BeatGuess',
       debugShowCheckedModeBanner: false,
+      scaffoldMessengerKey: scaffoldMessengerKey,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,

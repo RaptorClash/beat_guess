@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/foundation.dart';
+import '../utils/NotificationHelper.dart';
 
 class ApiSettingsScreen extends StatefulWidget {
   const ApiSettingsScreen({super.key});
@@ -23,84 +24,96 @@ class _ApiSettingsScreenState extends State<ApiSettingsScreen> {
   }
 
   Future<void> _loadData() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _clientIdController.text = prefs.getString('spotify_client_id') ?? '';
-      _clientSecretController.text =
-          prefs.getString('spotify_client_secret') ?? '';
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      setState(() {
+        _clientIdController.text = prefs.getString('spotify_client_id') ?? '';
+        _clientSecretController.text =
+            prefs.getString('spotify_client_secret') ?? '';
 
-      int expires = prefs.getInt('spotify_token_expires') ?? 0;
-      _isLoggedIn = DateTime.now().millisecondsSinceEpoch < expires;
-    });
+        int expires = prefs.getInt('spotify_token_expires') ?? 0;
+        _isLoggedIn = DateTime.now().millisecondsSinceEpoch < expires;
+      });
+    } catch (e) {
+      NotificationHelper.showError("Fehler beim laden der api_settings_screen.dart.");
+    }
   }
 
   Future<void> _loginSpotify() async {
-    String clientId = _clientIdController.text.trim();
-    String clientSecret = _clientSecretController.text.trim();
-
-    if (clientId.isEmpty || clientSecret.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Bitte Client ID UND Secret eingeben!"),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('spotify_client_id', clientId);
-    await prefs.setString('spotify_client_secret', clientSecret);
-
-    String redirectUri = kIsWeb
-        ? "http://127.0.0.1:8080/"
-        : "beatguess://callback";
-    String authHost = "accounts.spotify.com";
-    String scopes =
-        "playlist-read-private playlist-read-collaborative user-read-private user-read-email user-modify-playback-state";
-
-    Uri authUri = Uri.https(authHost, '/authorize', {
-      'client_id': clientId,
-      'response_type': 'code',
-      'redirect_uri': redirectUri,
-      'scope': scopes,
-      'show_dialog': 'true',
-    });
-
     try {
-      await launchUrl(
-        authUri,
-        mode: LaunchMode.externalApplication,
-        webOnlyWindowName: '_self',
-      );
+      String clientId = _clientIdController.text.trim();
+      String clientSecret = _clientSecretController.text.trim();
+
+      if (clientId.isEmpty || clientSecret.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Bitte Client ID UND Secret eingeben!"),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('spotify_client_id', clientId);
+      await prefs.setString('spotify_client_secret', clientSecret);
+
+      String redirectUri = kIsWeb
+          ? "http://127.0.0.1:8080/"
+          : "beatguess://callback";
+      String authHost = "accounts.spotify.com";
+      String scopes =
+          "playlist-read-private playlist-read-collaborative user-read-private user-read-email user-modify-playback-state";
+
+      Uri authUri = Uri.https(authHost, '/authorize', {
+        'client_id': clientId,
+        'response_type': 'code',
+        'redirect_uri': redirectUri,
+        'scope': scopes,
+        'show_dialog': 'true',
+      });
+
+      try {
+        await launchUrl(
+          authUri,
+          mode: LaunchMode.externalApplication,
+          webOnlyWindowName: '_self',
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Fehler: Konnte den Browser nicht öffnen!"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Fehler: Konnte den Browser nicht öffnen!"),
-          backgroundColor: Colors.red,
-        ),
-      );
+      NotificationHelper.showError("Fehler beim einloggen mit Spotify");
     }
   }
 
   Future<void> _logoutSpotify() async {
-    final prefs = await SharedPreferences.getInstance();
+    try {
+      final prefs = await SharedPreferences.getInstance();
 
-    await prefs.remove('spotify_access_token');
-    await prefs.remove('spotify_token_expires');
+      await prefs.remove('spotify_access_token');
+      await prefs.remove('spotify_token_expires');
 
-    setState(() {
-      _isLoggedIn = false;
-    });
+      setState(() {
+        _isLoggedIn = false;
+      });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          "Abgemeldet! Du kannst dich jetzt mit einem anderen Account einloggen.",
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Abgemeldet! Du kannst dich jetzt mit einem anderen Account einloggen.",
+          ),
+          backgroundColor: Colors.blue,
         ),
-        backgroundColor: Colors.blue,
-      ),
-    );
+      );
+    } catch (e) {
+      NotificationHelper.showError("Fehler beim ausloggen mit Spotify");
+    }
   }
 
   Widget _buildInstructionStep(

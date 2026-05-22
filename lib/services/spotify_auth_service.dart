@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
+import '../utils/NotificationHelper.dart';
 
 class SpotifyAuthService {
   Future<void> exchangeCodeForToken(String code) async {
@@ -53,29 +54,37 @@ class SpotifyAuthService {
         );
 
         print("ERFOLG: Spotify Token wurde gespeichert!");
+        NotificationHelper.showSuccess("Spotify Token wurde gespeichert!");
       } else {
-        print("FEHLER vom Spotify-Server: Code ${response.statusCode}");
+        NotificationHelper.showError(
+          "Fehler vom Spotify-Server: Code ${response.statusCode}",
+        );
       }
     } catch (e) {
-      print("FEHLER beim Verarbeiten des Logins: $e");
+      NotificationHelper.showError("Fehler beim Verarbeiten des Logins: $e");
     }
   }
 
   Future<bool> checkAndRefreshLogin() async {
-    final prefs = await SharedPreferences.getInstance();
-    int expires = prefs.getInt('spotify_token_expires') ?? 0;
-    String? refreshToken = prefs.getString('spotify_refresh_token');
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      int expires = prefs.getInt('spotify_token_expires') ?? 0;
+      String? refreshToken = prefs.getString('spotify_refresh_token');
 
-    int now = DateTime.now().millisecondsSinceEpoch;
+      int now = DateTime.now().millisecondsSinceEpoch;
 
-    if (now > expires - 300000) {
-      if (refreshToken != null) {
-        return await refreshAccessToken(refreshToken);
-      } else {
-        return false;
+      if (now > expires - 300000) {
+        if (refreshToken != null) {
+          return await refreshAccessToken(refreshToken);
+        } else {
+          return false;
+        }
       }
+      return true;
+    } catch (e) {
+      NotificationHelper.showError("Fehler beim aktualisieren des Logins");
+      return false;
     }
-    return true;
   }
 
   Future<bool> refreshAccessToken(String refreshToken) async {
@@ -110,6 +119,7 @@ class SpotifyAuthService {
       }
       return false;
     } catch (e) {
+      NotificationHelper.showError("Fehler beim aktualisieren des Refresh Tokens");
       return false;
     }
   }

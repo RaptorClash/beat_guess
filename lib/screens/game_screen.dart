@@ -7,6 +7,7 @@ import '../widgets/player_switch_dialog.dart';
 import '../widgets/game_stats_banner.dart';
 import '../widgets/player_queue_list.dart';
 import '../controllers/game_controller.dart';
+import '../utils/NotificationHelper.dart';
 
 class GameScreen extends StatefulWidget {
   final List<String> playerNames;
@@ -28,33 +29,36 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen>
     with SingleTickerProviderStateMixin {
-  
   late GameController _controller;
   late AnimationController _progressController;
 
   @override
   void initState() {
-    super.initState();
-    _progressController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 30),
-    );
-
-    _controller = GameController(
-      playerNames: widget.playerNames,
-      cardsToWin: widget.cardsToWin,
-      playlistUrl: widget.playlistUrl,
-      playUntilAllFinish: widget.playUntilAllFinish,
-    );
-
-    _controller.addListener(_onControllerChanged);
-
-    _controller.initGame(() {
-      showDialogMsg(
-        "Playlist konnte nicht geladen werden. Nutze Standard-Songs.",
-        Colors.orange,
+    try {
+      super.initState();
+      _progressController = AnimationController(
+        vsync: this,
+        duration: const Duration(seconds: 30),
       );
-    });
+
+      _controller = GameController(
+        playerNames: widget.playerNames,
+        cardsToWin: widget.cardsToWin,
+        playlistUrl: widget.playlistUrl,
+        playUntilAllFinish: widget.playUntilAllFinish,
+      );
+
+      _controller.addListener(_onControllerChanged);
+
+      _controller.initGame(() {
+        showDialogMsg(
+          "Playlist konnte nicht geladen werden. Nutze Standard-Songs.",
+          Colors.orange,
+        );
+      });
+    } catch (e) {
+      NotificationHelper.showError("Fehler beim initialisieren der game_screen.dart");
+    }
   }
 
   void _onControllerChanged() {
@@ -63,160 +67,190 @@ class _GameScreenState extends State<GameScreen>
 
   @override
   void dispose() {
-    _progressController.dispose();
-    _controller.removeListener(_onControllerChanged);
-    _controller.stopMusic();
-    super.dispose();
+    try {
+      _progressController.dispose();
+      _controller.removeListener(_onControllerChanged);
+      _controller.stopMusic();
+      super.dispose();
+    } catch (e) {
+      NotificationHelper.showError("Fehler beim beenden");
+    }
   }
 
   void nextTurn() {
-    if (_controller.checkGameEnd()) {
-      showVictoryScreen();
-      return;
-    }
-
-    int nextIndex = _controller.getNextPlayerIndex();
-    Player nextPlayer = _controller.players[nextIndex];
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => PlayerSwitchDialog(playerName: nextPlayer.name),
-    ).then((_) {
-      if (mounted) {
-        _progressController.reset();
-        _controller.advanceToNextTurn(nextIndex);
+    try {
+      if (_controller.checkGameEnd()) {
+        showVictoryScreen();
+        return;
       }
-    });
+
+      int nextIndex = _controller.getNextPlayerIndex();
+      Player nextPlayer = _controller.players[nextIndex];
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => PlayerSwitchDialog(playerName: nextPlayer.name),
+      ).then((_) {
+        if (mounted) {
+          _progressController.reset();
+          _controller.advanceToNextTurn(nextIndex);
+        }
+      });
+    } catch (e) {
+      NotificationHelper.showError("Fehler beim nächsten Zug machen.");
+    }
   }
 
   void guessPlacement(int index) {
-    Song? guessedSong = _controller.currentGuessSong;
-    if (guessedSong == null) return;
+    try {
+      Song? guessedSong = _controller.currentGuessSong;
+      if (guessedSong == null) return;
 
-    _progressController.stop();
-    bool isCorrect = _controller.guessPlacement(index);
+      _progressController.stop();
+      bool isCorrect = _controller.guessPlacement(index);
 
-    if (isCorrect) {
-      showDialogMsg('Richtig! 🎉', Colors.green);
-    } else {
-      showDialogMsg(
-        'Falsch! Es war "${guessedSong.title}" von ${guessedSong.artist} (${guessedSong.year})',
-        Colors.red,
-      );
+      if (isCorrect) {
+        showDialogMsg('Richtig! 🎉', Colors.green);
+      } else {
+        showDialogMsg(
+          'Falsch! Es war "${guessedSong.title}" von ${guessedSong.artist} (${guessedSong.year})',
+          Colors.red,
+        );
+      }
+
+      Future.delayed(const Duration(seconds: 1), () {
+        if (mounted) nextTurn();
+      });
+    } catch (e) {
+      NotificationHelper.showError("Fehler beim Karten platzieren");
     }
-
-    Future.delayed(const Duration(seconds: 1), () {
-      if (mounted) nextTurn();
-    });
   }
 
   void showVictoryScreen() {
-    List<Player> leaderboard = _controller.getLeaderboard();
-    Player winner = leaderboard.first;
+    try {
+      List<Player> leaderboard = _controller.getLeaderboard();
+      Player winner = leaderboard.first;
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Column(
-          children: [
-            const Icon(Icons.emoji_events, color: Colors.amber, size: 60),
-            const SizedBox(height: 10),
-            Text('🎉 ${winner.name} GEWINNT! 🎉', textAlign: TextAlign.center),
-          ],
-        ),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Column(
             children: [
-              Text(
-                widget.playUntilAllFinish
-                    ? 'Alle Spieler haben ${widget.cardsToWin} Karten gesammelt!\n${winner.name} war am schnellsten.'
-                    : '${winner.name} hat als Erstes ${widget.cardsToWin} Karten gesammelt!',
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 16),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Rangliste:',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  decoration: TextDecoration.underline,
-                ),
-              ),
+              const Icon(Icons.emoji_events, color: Colors.amber, size: 60),
               const SizedBox(height: 10),
-              ...leaderboard.asMap().entries.map((entry) {
-                int rank = entry.key + 1;
-                Player p = entry.value;
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '$rank. ${p.name}',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: p.name == winner.name
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                        ),
-                      ),
-                      Text(
-                        widget.playUntilAllFinish
-                            ? '${p.score} Pkt | ${p.turns} Züge'
-                            : '${p.score} Pkt (${p.wrongGuesses} F)',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          color: Colors.black54,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }),
+              Text(
+                '🎉 ${winner.name} GEWINNT! 🎉',
+                textAlign: TextAlign.center,
+              ),
             ],
           ),
-        ),
-        actionsAlignment: MainAxisAlignment.center,
-        actions: [
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.deepPurple,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            ),
-            onPressed: () {
-              Navigator.of(context).pop();
-              Navigator.of(context).pop();
-            },
-            child: const Text(
-              'Hauptmenü',
-              style: TextStyle(fontWeight: FontWeight.bold),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  widget.playUntilAllFinish
+                      ? 'Alle Spieler haben ${widget.cardsToWin} Karten gesammelt!\n${winner.name} war am schnellsten.'
+                      : '${winner.name} hat als Erstes ${widget.cardsToWin} Karten gesammelt!',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 16),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Rangliste:',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                ...leaderboard.asMap().entries.map((entry) {
+                  int rank = entry.key + 1;
+                  Player p = entry.value;
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '$rank. ${p.name}',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: p.name == winner.name
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                          ),
+                        ),
+                        Text(
+                          widget.playUntilAllFinish
+                              ? '${p.score} Pkt | ${p.turns} Züge'
+                              : '${p.score} Pkt (${p.wrongGuesses} F)',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Colors.black54,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
             ),
           ),
-        ],
-      ),
-    );
+          actionsAlignment: MainAxisAlignment.center,
+          actions: [
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.deepPurple,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+              ),
+              onPressed: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).pop();
+              },
+              child: const Text(
+                'Hauptmenü',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      NotificationHelper.showError("Fehler beim anzeigen des Siegesbildschirms");
+    }
   }
 
   void showDialogMsg(String msg, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          msg,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            msg,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          backgroundColor: color,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          duration: const Duration(milliseconds: 2000),
         ),
-        backgroundColor: color,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        duration: const Duration(milliseconds: 2000),
-      ),
-    );
+      );
+    } catch (e) {
+      NotificationHelper.showError("Fehler beim anzeigen der Snackbar.");
+    }
   }
 
   @override
@@ -256,9 +290,7 @@ class _GameScreenState extends State<GameScreen>
             child: _buildPlayArea(),
           ),
           const SizedBox(height: 16),
-          Expanded(
-            child: _buildTimeline(currentPlayer),
-          ),
+          Expanded(child: _buildTimeline(currentPlayer)),
         ],
       ),
     );
@@ -366,7 +398,9 @@ class _GameScreenState extends State<GameScreen>
                       width: double.infinity,
                       child: ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: isPlaying ? Colors.green : Colors.deepPurple,
+                          backgroundColor: isPlaying
+                              ? Colors.green
+                              : Colors.deepPurple,
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -399,8 +433,8 @@ class _GameScreenState extends State<GameScreen>
                           _controller.isMusicLoading
                               ? "Lade Audio..."
                               : (isPlaying
-                                  ? "Song wird abgespielt..."
-                                  : "Song abspielen (30s)"),
+                                    ? "Song wird abgespielt..."
+                                    : "Song abspielen (30s)"),
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -442,7 +476,10 @@ class _GameScreenState extends State<GameScreen>
                   isSecret: true,
                 ),
               ),
-              child: SongCard(song: _controller.currentGuessSong!, isSecret: true),
+              child: SongCard(
+                song: _controller.currentGuessSong!,
+                isSecret: true,
+              ),
             ),
           ] else
             const Padding(
