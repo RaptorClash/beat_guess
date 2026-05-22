@@ -29,21 +29,22 @@ class MusicService {
         },
         body: jsonEncode({
           "uris": [song.spotifyUri],
-          "position_ms": startPosition 
+          "position_ms": startPosition,
         }),
       );
 
       if (response.statusCode == 204 || response.statusCode == 200) {
         isPlaying = true;
-        
+
         _playbackTimer = Timer(const Duration(seconds: 30), () {
-          if (isPlaying) { 
-             stopMusic();
+          if (isPlaying) {
+            stopMusic();
           }
         });
-
       } else if (response.statusCode == 404) {
-        print("FEHLER: Kein aktives Gerät gefunden! Bitte Spotify kurz am PC/Handy antippen.");
+        print(
+          "FEHLER: Kein aktives Gerät gefunden! Bitte Spotify kurz am PC/Handy antippen.",
+        );
       } else {
         print("FEHLER bei Spotify Playback: Code ${response.statusCode}");
       }
@@ -54,9 +55,9 @@ class MusicService {
 
   Future<void> stopMusic() async {
     isPlaying = false;
-    
-    _playbackTimer?.cancel(); 
-    
+
+    _playbackTimer?.cancel();
+
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('spotify_access_token');
@@ -65,7 +66,7 @@ class MusicService {
         Uri.parse('https://api.spotify.com/v1/me/player/pause'),
         headers: {'Authorization': 'Bearer $token'},
       );
-      
+
       if (response.statusCode == 401) {
         print("Token abgelaufen, bitte neu einloggen.");
       }
