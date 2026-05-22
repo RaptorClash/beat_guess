@@ -5,7 +5,6 @@ import '../models/song.dart';
 
 class PlaylistService {
   Future<List<Song>> fetchSpotifyPlaylist(String url) async {
-    
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('spotify_access_token');
     final expires = prefs.getInt('spotify_token_expires') ?? 0;
@@ -23,8 +22,9 @@ class PlaylistService {
     }
 
     String apiHost = "api.spotify.com";
-    
-    String? nextUrl = "https://$apiHost/v1/playlists/$playlistId/items?limit=100";
+
+    String? nextUrl =
+        "https://$apiHost/v1/playlists/$playlistId/items?limit=100";
     List<Song> songs = [];
 
     while (nextUrl != null) {
@@ -41,39 +41,93 @@ class PlaylistService {
 
       try {
         var items = data['items'] ?? [];
-        
+
         for (var item in items) {
-          var trackData = item['item'] ?? item['track']; 
+          var trackData = item['item'] ?? item['track'];
           if (trackData == null) continue;
 
           String title = trackData['name']?.toString() ?? "Unbekannter Titel";
-          
+
           String artist = "Unbekannter Künstler";
-          if (trackData['artists'] != null && (trackData['artists'] as List).isNotEmpty) {
-            artist = trackData['artists'][0]['name']?.toString() ?? "Unbekannter Künstler";
+          if (trackData['artists'] != null &&
+              (trackData['artists'] as List).isNotEmpty) {
+            artist =
+                trackData['artists'][0]['name']?.toString() ??
+                "Unbekannter Künstler";
           }
 
-        String releaseDate = trackData['album']?['release_date']?.toString() ?? "2000";
+          String releaseDate =
+              trackData['album']?['release_date']?.toString() ?? "2000";
           int year = int.tryParse(releaseDate.split('-')[0]) ?? 2000;
-          
-          String uri = trackData['uri']?.toString() ?? ""; 
-          
-          int durationMs = trackData['duration_ms'] as int? ?? 180000; 
 
-          songs.add(Song(title, artist, year, uri, durationMs)); // Parameter hinzufügen!
+          String uri = trackData['uri']?.toString() ?? "";
+
+          int durationMs = trackData['duration_ms'] as int? ?? 180000;
+
+          songs.add(
+            Song(title, artist, year, uri, durationMs),
+          ); // Parameter hinzufügen!
         }
       } catch (e) {
         print("❌ FEHLER BEIM PARSEN EINES SONGS: $e");
       }
 
-      nextUrl = data['next']; 
-      
+      nextUrl = data['next'];
+
       if (nextUrl != null) {
-        print("LOG: Lade nächste Seite... (Bisher ${songs.length} Songs geladen)");
+        print(
+          "LOG: Lade nächste Seite... (Bisher ${songs.length} Songs geladen)",
+        );
       }
     }
 
     print("--- ERFOLG: ALLE ${songs.length} Songs geladen ---");
     return songs;
+  }
+
+  Future<List<Map<String, String>>> getSavedPlaylists() async {
+    final prefs = await SharedPreferences.getInstance();
+    List<String> list = prefs.getStringList('saved_playlists') ?? [];
+    return list.map((item) {
+      var parts = item.split('|||');
+      return {"name": parts[0], "url": parts.length > 1 ? parts[1] : ""};
+    }).toList();
+  }
+
+  Future<void> savePlaylist(String name, String url) async {
+    final prefs = await SharedPreferences.getInstance();
+    List<Map<String, String>> playlists = await getSavedPlaylists();
+
+    playlists.removeWhere((p) => p['url'] == url);
+    playlists.insert(0, {"name": name, "url": url});
+
+    List<String> list = playlists
+        .map((p) => "${p['name']}|||${p['url']}")
+        .toList();
+    await prefs.setStringList('saved_playlists', list);
+  }
+
+  Future<String> fetchPlaylistName(String url) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('spotify_access_token');
+      if (token == null) return "Unbekannte Playlist";
+
+      Uri uri =Uri.parse(url);
+      String playlistId = uri.pathSegments.last;
+
+      var response = await http.get(
+        Uri.parse('https://api.spotify.com/v1/playlists/$playlistId'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 200) {
+        var data = jsonDecode(response.body);
+        return data['name'] ?? "Eigene Playlist";
+      }
+    } catch (e) {
+      print("Fehler beim Abrufen des Playlist-Namens: $e");
+    }
+    return "Eigene Playlist";
   }
 }

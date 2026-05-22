@@ -3,11 +3,10 @@ import '../models/song.dart';
 import '../models/player.dart';
 import '../widgets/song_card.dart';
 import '../widgets/timeline_slot.dart';
-import '../services/music_service.dart';
-import '../services/playlist_service.dart';
 import '../widgets/player_switch_dialog.dart';
 import '../widgets/game_stats_banner.dart';
 import '../widgets/player_queue_list.dart';
+import '../controllers/game_controller.dart';
 
 class GameScreen extends StatefulWidget {
   final List<String> playerNames;
@@ -29,63 +28,9 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen>
     with SingleTickerProviderStateMixin {
-  final MusicService _musicService = MusicService();
-  final PlaylistService _playlistService = PlaylistService();
-  bool _isMusicLoading = false;
-  bool _isGameLoading = true;
-
+  
+  late GameController _controller;
   late AnimationController _progressController;
-
-  int _totalSongs = 0;
-
-  List<Song> unplayedSongs = [
-    Song(
-      "Take On Me",
-      "a-ha",
-      1984,
-      "spotify:track:2WfaOiMkCvy7F5fcp2zZ8L",
-      120000,
-    ),
-    Song(
-      "Smells Like Teen Spirit",
-      "Nirvana",
-      1991,
-      "spotify:track:1f3yAtsJtY87CTmM8RLnxf",
-      120000,
-    ),
-    Song(
-      "Macarena",
-      "Los del Río",
-      1993,
-      "spotify:track:1hlM2XzHn0GzXW2H36x5sK",
-      120000,
-    ),
-    Song(
-      "Rolling in the Deep",
-      "Adele",
-      2010,
-      "spotify:track:4OSBTYWVwsQhGLF9NHvIbR",
-      120000,
-    ),
-    Song(
-      "Blinding Lights",
-      "The Weeknd",
-      2019,
-      "spotify:track:0VjIjW4GlUZAMYd2vXMi3b",
-      120000,
-    ),
-    Song(
-      "As It Was",
-      "Harry Styles",
-      2022,
-      "spotify:track:4LRPiXqCikLlN15c3yImP7",
-      120000,
-    ),
-  ];
-
-  List<Player> players = [];
-  int currentPlayerIndex = 0;
-  Song? currentGuessSong;
 
   @override
   void initState() {
@@ -94,131 +39,71 @@ class _GameScreenState extends State<GameScreen>
       vsync: this,
       duration: const Duration(seconds: 30),
     );
-    _initGame();
+
+    _controller = GameController(
+      playerNames: widget.playerNames,
+      cardsToWin: widget.cardsToWin,
+      playlistUrl: widget.playlistUrl,
+      playUntilAllFinish: widget.playUntilAllFinish,
+    );
+
+    _controller.addListener(_onControllerChanged);
+
+    _controller.initGame(() {
+      showDialogMsg(
+        "Playlist konnte nicht geladen werden. Nutze Standard-Songs.",
+        Colors.orange,
+      );
+    });
+  }
+
+  void _onControllerChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
     _progressController.dispose();
-    _musicService.stopMusic();
+    _controller.removeListener(_onControllerChanged);
+    _controller.stopMusic();
     super.dispose();
   }
 
-  Future<void> _initGame() async {
-    players = widget.playerNames.map((name) => Player(name: name)).toList();
-
-    if (widget.playlistUrl.isNotEmpty) {
-      List<Song> fetchedSongs = await _playlistService.fetchSpotifyPlaylist(
-        widget.playlistUrl,
-      );
-      if (fetchedSongs.isNotEmpty) {
-        unplayedSongs = fetchedSongs;
-      } else {
-        showDialogMsg(
-          "Playlist konnte nicht geladen werden. Nutze Standard-Songs.",
-          Colors.orange,
-        );
-      }
-    }
-
-    _totalSongs = unplayedSongs.length;
-    unplayedSongs.shuffle();
-
-    for (var player in players) {
-      if (unplayedSongs.isNotEmpty)
-        player.timeline.add(unplayedSongs.removeLast());
-    }
-
-    setState(() {
-      _isGameLoading = false;
-      drawNextSong();
-    });
-  }
-
-  void drawNextSong() {
-    _progressController.reset();
-
-    if (unplayedSongs.isNotEmpty) {
-      setState(() => currentGuessSong = unplayedSongs.removeLast());
-    } else {
-      setState(() => currentGuessSong = null);
-    }
-  }
-
   void nextTurn() {
-    if (!widget.playUntilAllFinish &&
-        players.any((p) => p.score >= widget.cardsToWin)) {
+    if (_controller.checkGameEnd()) {
       showVictoryScreen();
       return;
     }
 
-    if (widget.playUntilAllFinish &&
-        players.every((p) => p.score >= widget.cardsToWin)) {
-      showVictoryScreen();
-      return;
-    }
-
-    if (unplayedSongs.isEmpty && currentGuessSong == null) {
-      showVictoryScreen();
-      return;
-    }
-
-    int nextIndex = (currentPlayerIndex + 1) % players.length;
-
-    if (widget.playUntilAllFinish) {
-      int safetyCounter = 0;
-      while (players[nextIndex].score >= widget.cardsToWin &&
-          safetyCounter < players.length) {
-        nextIndex = (nextIndex + 1) % players.length;
-        safetyCounter++;
-      }
-    }
-
-    Player nextPlayer = players[nextIndex];
+    int nextIndex = _controller.getNextPlayerIndex();
+    Player nextPlayer = _controller.players[nextIndex];
 
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (_) => PlayerSwitchDialog(playerName: nextPlayer.name),
     ).then((_) {
-      setState(() {
-        currentPlayerIndex = nextIndex;
-      });
-      drawNextSong();
+      if (mounted) {
+        _progressController.reset();
+        _controller.advanceToNextTurn(nextIndex);
+      }
     });
   }
 
   void guessPlacement(int index) {
-    if (currentGuessSong == null) return;
+    Song? guessedSong = _controller.currentGuessSong;
+    if (guessedSong == null) return;
 
-    _musicService.stopMusic();
     _progressController.stop();
-
-    Player currentPlayer = players[currentPlayerIndex];
-    currentPlayer.turns++;
-
-    bool isCorrect = true;
-    int songYear = currentGuessSong!.year;
-
-    if (index > 0 && currentPlayer.timeline[index - 1].year > songYear)
-      isCorrect = false;
-    if (index < currentPlayer.timeline.length &&
-        currentPlayer.timeline[index].year < songYear)
-      isCorrect = false;
+    bool isCorrect = _controller.guessPlacement(index);
 
     if (isCorrect) {
       showDialogMsg('Richtig! 🎉', Colors.green);
-      setState(() => currentPlayer.timeline.insert(index, currentGuessSong!));
     } else {
       showDialogMsg(
-        'Falsch! Es war "${currentGuessSong!.title}" von ${currentGuessSong!.artist} (${currentGuessSong!.year})',
+        'Falsch! Es war "${guessedSong.title}" von ${guessedSong.artist} (${guessedSong.year})',
         Colors.red,
       );
-
-      setState(() {
-        currentPlayer.wrongGuesses++;
-        unplayedSongs.insert(0, currentGuessSong!);
-      });
     }
 
     Future.delayed(const Duration(seconds: 1), () {
@@ -227,19 +112,7 @@ class _GameScreenState extends State<GameScreen>
   }
 
   void showVictoryScreen() {
-    List<Player> leaderboard = List.from(players);
-    leaderboard.sort((a, b) {
-      int scoreComparison = b.score.compareTo(a.score);
-      if (scoreComparison != 0) return scoreComparison;
-
-      if (widget.playUntilAllFinish) {
-        int turnComparison = a.turns.compareTo(b.turns);
-        if (turnComparison != 0) return turnComparison;
-      }
-
-      return a.wrongGuesses.compareTo(b.wrongGuesses);
-    });
-
+    List<Player> leaderboard = _controller.getLeaderboard();
     Player winner = leaderboard.first;
 
     showDialog(
@@ -348,32 +221,33 @@ class _GameScreenState extends State<GameScreen>
 
   @override
   Widget build(BuildContext context) {
-    if (_isGameLoading) {
+    if (_controller.isGameLoading) {
       return const Scaffold(
-        body: Center(child: CircularProgressIndicator(color: Colors.deepPurple)),
+        body: Center(
+          child: CircularProgressIndicator(color: Colors.deepPurple),
+        ),
       );
     }
 
-    Player currentPlayer = players[currentPlayerIndex];
-    int songsLeft = unplayedSongs.length + (currentGuessSong != null ? 1 : 0);
+    Player currentPlayer = _controller.currentPlayer;
 
     return Scaffold(
       backgroundColor: Colors.deepPurple.shade50,
-      appBar: _buildAppBar(currentPlayer), 
+      appBar: _buildAppBar(currentPlayer),
       body: Column(
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: GameStatsBanner(
-              totalSongs: _totalSongs,
-              songsLeft: songsLeft,
+              totalSongs: _controller.totalSongs,
+              songsLeft: _controller.songsLeft,
               wrongGuesses: currentPlayer.wrongGuesses,
             ),
           ),
           const SizedBox(height: 16),
           PlayerQueueList(
-            players: players,
-            currentPlayerIndex: currentPlayerIndex,
+            players: _controller.players,
+            currentPlayerIndex: _controller.currentPlayerIndex,
             cardsToWin: widget.cardsToWin,
           ),
           const SizedBox(height: 16),
@@ -390,8 +264,6 @@ class _GameScreenState extends State<GameScreen>
     );
   }
 
-  // --- HILFSMETHODEN FÜR DIE UI --- //
-
   PreferredSizeWidget _buildAppBar(Player currentPlayer) {
     return AppBar(
       toolbarHeight: 70,
@@ -406,21 +278,48 @@ class _GameScreenState extends State<GameScreen>
             decoration: BoxDecoration(
               color: Colors.deepPurple,
               borderRadius: BorderRadius.circular(20),
-              boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))],
+              boxShadow: const [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 4,
+                  offset: Offset(0, 2),
+                ),
+              ],
             ),
             child: Row(
               children: [
                 const Icon(Icons.person, color: Colors.white, size: 18),
                 const SizedBox(width: 8),
-                Text(currentPlayer.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
+                Text(
+                  currentPlayer.name,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Colors.white,
+                  ),
+                ),
               ],
             ),
           ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              const Text('Punkte', style: TextStyle(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.bold)),
-              Text('${currentPlayer.score} / ${widget.cardsToWin}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.deepPurple)),
+              const Text(
+                'Punkte',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.black54,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                '${currentPlayer.score} / ${widget.cardsToWin}',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.deepPurple,
+                ),
+              ),
             ],
           ),
         ],
@@ -434,18 +333,32 @@ class _GameScreenState extends State<GameScreen>
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4))],
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
       width: double.infinity,
       child: Column(
         children: [
-          const Text("Zieh die Karte an die richtige Stelle!", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black54)),
+          const Text(
+            "Zieh die Karte an die richtige Stelle!",
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: Colors.black54,
+            ),
+          ),
           const SizedBox(height: 12),
-          if (currentGuessSong != null) ...[
+          if (_controller.currentGuessSong != null) ...[
             AnimatedBuilder(
               animation: _progressController,
               builder: (context, child) {
                 bool isPlaying = _progressController.isAnimating;
+
                 return Column(
                   children: [
                     SizedBox(
@@ -455,22 +368,43 @@ class _GameScreenState extends State<GameScreen>
                         style: ElevatedButton.styleFrom(
                           backgroundColor: isPlaying ? Colors.green : Colors.deepPurple,
                           foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                           elevation: isPlaying ? 6 : 2,
                         ),
-                        onPressed: _isMusicLoading ? null : () async {
-                          if (isPlaying) return;
-                          setState(() => _isMusicLoading = true);
-                          await _musicService.playSongSnippet(currentGuessSong!);
-                          setState(() => _isMusicLoading = false);
-                          _progressController.forward(from: 0.0);
-                        },
-                        icon: _isMusicLoading
-                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                            : Icon(isPlaying ? Icons.music_note : Icons.play_arrow),
+                        onPressed: _controller.isMusicLoading
+                            ? null
+                            : () async {
+                                if (isPlaying) return;
+
+                                bool success = await _controller.playMusic();
+                                if (success && mounted) {
+                                  _progressController.forward(from: 0.0);
+                                }
+                              },
+                        icon: _controller.isMusicLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Icon(
+                                isPlaying ? Icons.music_note : Icons.play_arrow,
+                              ),
                         label: Text(
-                          _isMusicLoading ? "Lade Audio..." : (isPlaying ? "Song wird abgespielt..." : "Song abspielen (30s)"),
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          _controller.isMusicLoading
+                              ? "Lade Audio..."
+                              : (isPlaying
+                                  ? "Song wird abgespielt..."
+                                  : "Song abspielen (30s)"),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
@@ -490,18 +424,37 @@ class _GameScreenState extends State<GameScreen>
             ),
             const SizedBox(height: 20),
             Draggable<Song>(
-              data: currentGuessSong,
+              data: _controller.currentGuessSong,
               feedback: SizedBox(
                 width: MediaQuery.of(context).size.width * 0.85,
-                child: Opacity(opacity: 0.9, child: SongCard(song: currentGuessSong!, isSecret: true)),
+                child: Opacity(
+                  opacity: 0.9,
+                  child: SongCard(
+                    song: _controller.currentGuessSong!,
+                    isSecret: true,
+                  ),
+                ),
               ),
-              childWhenDragging: Opacity(opacity: 0.4, child: SongCard(song: currentGuessSong!, isSecret: true)),
-              child: SongCard(song: currentGuessSong!, isSecret: true),
+              childWhenDragging: Opacity(
+                opacity: 0.4,
+                child: SongCard(
+                  song: _controller.currentGuessSong!,
+                  isSecret: true,
+                ),
+              ),
+              child: SongCard(song: _controller.currentGuessSong!, isSecret: true),
             ),
           ] else
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 20.0),
-              child: Text("Stapel leer! 🎉", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.deepPurple)),
+              child: Text(
+                "Stapel leer! 🎉",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.deepPurple,
+                ),
+              ),
             ),
         ],
       ),
@@ -532,10 +485,11 @@ class _GameScreenState extends State<GameScreen>
       itemBuilder: (context, index) {
         return Column(
           children: [
-            if (currentGuessSong != null)
-              TimelineSlot(onAccept: (_) => guessPlacement(getFlatIndex(index))),
-            if (index < groups.length)
-              YearGroupCard(group: groups[index]), // Setzt voraus, dass YearGroupCard importiert ist
+            if (_controller.currentGuessSong != null)
+              TimelineSlot(
+                onAccept: (_) => guessPlacement(getFlatIndex(index)),
+              ),
+            if (index < groups.length) YearGroupCard(group: groups[index]),
           ],
         );
       },
