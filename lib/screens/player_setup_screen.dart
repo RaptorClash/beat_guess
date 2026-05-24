@@ -33,6 +33,60 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
     _loadData();
   }
 
+  Future<bool> _showExitWarning(String messageKey) async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: Row(
+                children: [
+                  const Icon(
+                    Icons.warning_amber_rounded,
+                    color: Colors.orange,
+                    size: 28,
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    t('warning'),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              content: Text(t(messageKey)),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: Text(
+                    t('cancel'),
+                    style: const TextStyle(color: Colors.grey, fontSize: 16),
+                  ),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.redAccent,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  onPressed: () => Navigator.of(
+                    context,
+                  ).pop(true), // Schließt Dialog und erlaubt "Zurück"
+                  child: Text(
+                    t('yes_leave'),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+  }
+
   Future<void> _loadData() async {
     try {
       bool loggedIn = await _authService.checkAndRefreshLogin();
@@ -120,47 +174,59 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          t('new_game'),
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: Badge(
-              isLabelVisible: !_isLoggedIn,
-              backgroundColor: Colors.redAccent,
-              smallSize: 12,
-              child: const Icon(Icons.settings),
-            ),
-            tooltip: 'API Setup',
-            onPressed: () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const ApiSettingsScreen(),
-                ),
-              );
-              _loadData();
-            },
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (didPop) return;
+
+        final bool shouldLeave = await _showExitWarning('exit_setup_warning');
+
+        if (shouldLeave && context.mounted) {
+          Navigator.of(context).pop();
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            t('new_game'),
+            style: TextStyle(fontWeight: FontWeight.bold),
           ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildPlayerCard(),
-            const SizedBox(height: 20),
-            _buildRulesCard(),
-            const SizedBox(height: 32),
-            _buildStartButton(),
-            const SizedBox(height: 20),
+          centerTitle: true,
+          elevation: 0,
+          actions: [
+            IconButton(
+              icon: Badge(
+                isLabelVisible: !_isLoggedIn,
+                backgroundColor: Colors.redAccent,
+                smallSize: 12,
+                child: const Icon(Icons.settings),
+              ),
+              tooltip: 'API Setup',
+              onPressed: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ApiSettingsScreen(),
+                  ),
+                );
+                _loadData();
+              },
+            ),
           ],
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildPlayerCard(),
+              const SizedBox(height: 20),
+              _buildRulesCard(),
+              const SizedBox(height: 32),
+              _buildStartButton(),
+              const SizedBox(height: 20),
+            ],
+          ),
         ),
       ),
     );

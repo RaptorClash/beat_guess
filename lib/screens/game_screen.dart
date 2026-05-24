@@ -232,9 +232,7 @@ class _GameScreenState extends State<GameScreen>
         ),
       );
     } catch (e) {
-      NotificationHelper.showError(
-        t('error_displaying_victory_screen'),
-      );
+      NotificationHelper.showError(t('error_displaying_victory_screen'));
     }
   }
 
@@ -259,8 +257,95 @@ class _GameScreenState extends State<GameScreen>
     }
   }
 
+  Future<bool> _showExitWarning(String messageKey) async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: Row(
+                children: [
+                  const Icon(
+                    Icons.warning_amber_rounded,
+                    color: Colors.orange,
+                    size: 28,
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    t('warning'),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              content: Text(t(messageKey)),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(
+                    context,
+                  ).pop(false), // Schließt Dialog, bleibt auf dem Screen
+                  child: Text(
+                    t('cancel'),
+                    style: const TextStyle(color: Colors.grey, fontSize: 16),
+                  ),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.redAccent,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  onPressed: () => Navigator.of(
+                    context,
+                  ).pop(true), // Schließt Dialog und erlaubt "Zurück"
+                  child: Text(
+                    t('yes_leave'),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+  }
+
   @override
   Widget build(BuildContext context) {
+    // 1. Hört auf Sprachwechsel
+    return ListenableBuilder(
+      listenable: LanguageService.instance,
+      builder: (context, _) {
+        // 2. Fängt das Zurückgehen für den gesamten Screen ab
+        return PopScope(
+          canPop: false,
+          onPopInvoked: (didPop) async {
+            if (didPop) return;
+
+            // BONUS: Musik sicherheitshalber stoppen, bevor das Popup kommt!
+            _controller.stopMusic();
+
+            // 3. Zeigt deinen Warn-Dialog mit dem passenden Text-Key an
+            final bool shouldLeave = await _showExitWarning(
+              'exit_game_warning',
+            );
+
+            // 4. Wenn der Nutzer wirklich gehen will: Tschüss!
+            if (shouldLeave && context.mounted) {
+              Navigator.of(context).pop();
+            }
+          },
+          // 5. Hier rufen wir den echten Inhalt auf (siehe unten)
+          child: _buildGameContent(context),
+        );
+      },
+    );
+  }
+
+  Widget _buildGameContent(BuildContext context) {
     if (_controller.isGameLoading) {
       return const Scaffold(
         body: Center(
@@ -273,7 +358,9 @@ class _GameScreenState extends State<GameScreen>
 
     return Scaffold(
       backgroundColor: Colors.deepPurple.shade50,
-      appBar: _buildAppBar(currentPlayer),
+      appBar: _buildAppBar(
+        currentPlayer,
+      ),
       body: Column(
         children: [
           Padding(

@@ -179,6 +179,15 @@ class LanguageService extends ChangeNotifier {
 
       //player_queue_list.dart
       'next_move': "Am Zug:",
+
+      // Dialoge
+      'warning': 'Achtung!',
+      'exit_setup_warning':
+          'Willst du wirklich zurück? Deine Einstellungen für das Spiel gehen verloren.',
+      'exit_game_warning':
+          'Willst du das Spiel wirklich abbrechen? Der aktuelle Fortschritt geht verloren.',
+      'cancel': 'Abbrechen',
+      'yes_leave': 'Ja, verlassen',
     },
     'en': {
       'app_title': 'BeatGuess',
@@ -323,6 +332,15 @@ class LanguageService extends ChangeNotifier {
 
       //player_queue_list.dart
       'next_move': "Next move:",
+
+      // Dialoge
+      'warning': 'Warning!',
+      'exit_setup_warning':
+          'Do you really want to go back? Your game settings will be lost.',
+      'exit_game_warning':
+          'Do you really want to quit the game? Your current progress will be lost.',
+      'cancel': 'Cancel',
+      'yes_leave': 'Yes, leave',
     },
   };
 

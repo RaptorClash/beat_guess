@@ -118,7 +118,7 @@ class _PlayerSwitchDialogState extends State<PlayerSwitchDialog>
                         Navigator.of(context).pop();
                       },
                       child: Text(
-                        'im_ready',
+                        t('im_ready'),
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w900,
