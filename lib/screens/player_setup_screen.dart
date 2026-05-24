@@ -45,15 +45,23 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
         });
       }
     } catch (e) {
-      NotificationHelper.showError("Fehler beim laden der player_setup_screen.dart");
+      NotificationHelper.showError(
+        "Fehler beim laden der player_setup_screen.dart",
+      );
     }
   }
 
   void addPlayer() {
     try {
-      if (_nameController.text.trim().isNotEmpty) {
+      String newName = _nameController.text.trim();
+      if (newName.isNotEmpty) {
+        if (players.contains(newName)) {
+          NotificationHelper.showError("Dieser Spielername existiert bereits!");
+          return;
+        }
+
         setState(() {
-          players.add(_nameController.text.trim());
+          players.add(newName);
           _nameController.clear();
         });
       }
