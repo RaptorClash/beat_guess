@@ -3,17 +3,16 @@ import 'package:flutter/foundation.dart';
 import 'package:app_links/app_links.dart';
 import 'screens/start_screen.dart';
 import 'utils/NotificationHelper.dart';
-
 import 'services/spotify_auth_service.dart';
-
 import 'services/url_helper_stub.dart'
     if (dart.library.html) 'services/url_helper_web.dart'
     as url_helper;
+import 'services/language_service.dart';
 
 void main() async {
   try {
     WidgetsFlutterBinding.ensureInitialized();
-
+  await LanguageService.instance.init();
     final authService = SpotifyAuthService();
 
     String? code = url_helper.getWebUrlCode();

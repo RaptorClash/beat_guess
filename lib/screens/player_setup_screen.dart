@@ -1,3 +1,4 @@
+import 'package:beat_guess/services/language_service.dart';
 import 'package:flutter/material.dart';
 import 'game_screen.dart';
 import 'api_settings_screen.dart';
@@ -45,9 +46,7 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
         });
       }
     } catch (e) {
-      NotificationHelper.showError(
-        "Fehler beim laden der player_setup_screen.dart",
-      );
+      NotificationHelper.showError(t('error_loading_player_setup_screen'));
     }
   }
 
@@ -56,7 +55,7 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
       String newName = _nameController.text.trim();
       if (newName.isNotEmpty) {
         if (players.contains(newName)) {
-          NotificationHelper.showError("Dieser Spielername existiert bereits!");
+          NotificationHelper.showError(t('username_already_exists'));
           return;
         }
 
@@ -66,13 +65,13 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
         });
       }
     } catch (e) {
-      NotificationHelper.showError("Fehler beim hinzufügen eines Spielers");
+      NotificationHelper.showError(t('error_adding_player'));
     }
   }
 
   Future<void> startGame() async {
     try {
-      if (players.isEmpty) players.add("Solo-Spieler");
+      if (players.isEmpty) players.add(t('solo_player'));
 
       setState(() => _isStarting = true);
       String url = _playlistController.text.trim();
@@ -105,19 +104,17 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
         if (mounted) setState(() => _isStarting = false);
       });
     } catch (e) {
-      NotificationHelper.showError("Fehler beim starten des Spiels.");
+      NotificationHelper.showError(t('error_starting_game'));
     }
   }
 
   Future<void> _deletePlaylist(String url) async {
     await _playlistService.deletePlaylist(url);
 
-    // Falls die gelöschte Playlist gerade im Textfeld eingetragen ist, leeren wir es
     if (_playlistController.text == url) {
       _playlistController.clear();
     }
 
-    // UI neu laden
     _loadData();
   }
 
@@ -125,8 +122,8 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          "Neues Spiel",
+        title: Text(
+          t('new_game'),
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
@@ -179,11 +176,11 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              children: const [
+              children: [
                 Icon(Icons.people_alt, color: Colors.deepPurple),
                 SizedBox(width: 10),
                 Text(
-                  "Wer spielt mit?",
+                  t('whos_in'),
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ],
@@ -195,7 +192,7 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
                   child: TextField(
                     controller: _nameController,
                     decoration: InputDecoration(
-                      labelText: "Spielername",
+                      labelText: "${t('player_name')}",
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
@@ -253,8 +250,8 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
               ),
             ] else ...[
               const SizedBox(height: 16),
-              const Text(
-                "Noch keine Spieler hinzugefügt.\n(Startest du jetzt, spielst du alleine!)",
+              Text(
+                t('no_players_added'),
                 style: TextStyle(
                   color: Colors.grey,
                   fontStyle: FontStyle.italic,
@@ -277,18 +274,18 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              children: const [
+              children: [
                 Icon(Icons.tune, color: Colors.deepPurple),
                 SizedBox(width: 10),
                 Text(
-                  "Spielregeln",
+                  t('game_rules'),
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
             const SizedBox(height: 20),
-            const Text(
-              "Punkte zum Sieg:",
+            Text(
+              t('points_to_win'),
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 color: Colors.black87,
@@ -300,7 +297,7 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
               children: [5, 10, 15, 20].map((int value) {
                 bool isSelected = _cardsToWin == value;
                 return ChoiceChip(
-                  label: Text("$value Karten"),
+                  label: Text("$value ${t('cards')}"),
                   selected: isSelected,
                   selectedColor: Colors.deepPurple,
                   labelStyle: TextStyle(
@@ -319,8 +316,8 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
               padding: EdgeInsets.symmetric(vertical: 16.0),
               child: Divider(height: 1),
             ),
-            const Text(
-              "Spielmodus:",
+            Text(
+              t('game_mode'),
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 color: Colors.black87,
@@ -332,7 +329,7 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
               runSpacing: 8.0,
               children: [
                 ChoiceChip(
-                  label: const Text("Bis der Erste gewinnt"),
+                  label: Text(t('first_one_wins')),
                   selected: !_playUntilAllFinish,
                   selectedColor: Colors.deepPurple,
                   labelStyle: TextStyle(
@@ -346,7 +343,7 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
                   },
                 ),
                 ChoiceChip(
-                  label: const Text("Bis alle fertig sind"),
+                  label: Text(t('everyone_done')),
                   selected: _playUntilAllFinish,
                   selectedColor: Colors.deepPurple,
                   labelStyle: TextStyle(
@@ -365,8 +362,8 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
               padding: EdgeInsets.symmetric(vertical: 16.0),
               child: Divider(height: 1),
             ),
-            const Text(
-              "Playlist:",
+            Text(
+              t('playlist'),
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 color: Colors.black87,
@@ -376,7 +373,7 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
             TextField(
               controller: _playlistController,
               decoration: InputDecoration(
-                labelText: "Spotify Playlist-Link einfügen",
+                labelText: "${t('insert_spotify_link')}",
                 hintText: "http://spotify.com/playlist/...",
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
@@ -394,8 +391,8 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
             ),
             if (_savedPlaylists.isNotEmpty) ...[
               const SizedBox(height: 24),
-              const Text(
-                "Playlist Bibliothek:",
+              Text(
+                t('playlist_library'),
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,

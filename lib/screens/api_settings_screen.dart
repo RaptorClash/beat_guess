@@ -1,3 +1,4 @@
+import 'package:beat_guess/services/language_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -35,7 +36,7 @@ class _ApiSettingsScreenState extends State<ApiSettingsScreen> {
         _isLoggedIn = DateTime.now().millisecondsSinceEpoch < expires;
       });
     } catch (e) {
-      NotificationHelper.showError("Fehler beim laden der api_settings_screen.dart.");
+      NotificationHelper.showError(t('error_laoding_api_settings_screen'));
     }
   }
 
@@ -46,8 +47,8 @@ class _ApiSettingsScreenState extends State<ApiSettingsScreen> {
 
       if (clientId.isEmpty || clientSecret.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Bitte Client ID UND Secret eingeben!"),
+          SnackBar(
+            content: Text(t('enterClientAndSecret')),
             backgroundColor: Colors.red,
           ),
         );
@@ -81,14 +82,14 @@ class _ApiSettingsScreenState extends State<ApiSettingsScreen> {
         );
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Fehler: Konnte den Browser nicht öffnen!"),
+          SnackBar(
+            content: Text(t('error_cannot_open_browser')),
             backgroundColor: Colors.red,
           ),
         );
       }
     } catch (e) {
-      NotificationHelper.showError("Fehler beim einloggen mit Spotify");
+      NotificationHelper.showError(t('error_login_spotify'));
     }
   }
 
@@ -104,15 +105,13 @@ class _ApiSettingsScreenState extends State<ApiSettingsScreen> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            "Abgemeldet! Du kannst dich jetzt mit einem anderen Account einloggen.",
-          ),
+        SnackBar(
+          content: Text(t('logout_spotify')),
           backgroundColor: Colors.blue,
         ),
       );
     } catch (e) {
-      NotificationHelper.showError("Fehler beim ausloggen mit Spotify");
+      NotificationHelper.showError(t('error_logout_spotify'));
     }
   }
 
@@ -205,9 +204,7 @@ class _ApiSettingsScreenState extends State<ApiSettingsScreen> {
                                 );
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text(
-                                      "In die Zwischenablage kopiert!",
-                                    ),
+                                    content: Text(t('copy_to_clipboard')),
                                     backgroundColor: Colors.green,
                                     duration: const Duration(seconds: 2),
                                   ),
@@ -231,7 +228,7 @@ class _ApiSettingsScreenState extends State<ApiSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Spotify API Setup")),
+      appBar: AppBar(title: Text(t('api_setup'))),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -249,11 +246,11 @@ class _ApiSettingsScreenState extends State<ApiSettingsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      children: const [
+                      children: [
                         Icon(Icons.settings_suggest, color: Colors.deepPurple),
                         SizedBox(width: 8),
                         Text(
-                          "Verknüpfung einrichten",
+                          t('set_up_link'),
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -266,30 +263,21 @@ class _ApiSettingsScreenState extends State<ApiSettingsScreen> {
 
                     _buildInstructionStep(
                       1,
-                      "Erstelle eine eigene Entwickler-App im Spotify Dashboard.",
+                      t('create_developer_app'),
                       linkUrl: "https://developer.spotify.com/dashboard",
-                      linkText: "Zum Spotify Dashboard",
+                      linkText: t('api_tutorial_step1'),
                     ),
-                    _buildInstructionStep(
-                      2,
-                      "Gehe zu 'User Management' und füge deinen Namen sowie die E-Mail-Adresse deines Spotify-Accounts hinzu.",
-                    ),
-                    _buildInstructionStep(
-                      3,
-                      "Fülle die 'Basic Information' aus (z.B. App Name und Beschreibung).",
-                    ),
+                    _buildInstructionStep(2, t('api_tutorial_step2')),
+                    _buildInstructionStep(3, t('api_tutorial_step3')),
                     _buildInstructionStep(
                       4,
-                      "Trage unter 'Redirect URIs' die folgenden Links exakt so ein (du kannst beide eintragen):",
+                      t('api_tutorial_step4'),
                       copyTexts: [
                         "http://127.0.0.1:8080/",
                         "beatguess://callback",
                       ],
                     ),
-                    _buildInstructionStep(
-                      5,
-                      "Kopiere die 'Client ID' und das 'Client Secret' aus dem Dashboard und füge sie hier unten ein.",
-                    ),
+                    _buildInstructionStep(5, t('api_tutorial_step5')),
                   ],
                 ),
               ),
@@ -298,8 +286,8 @@ class _ApiSettingsScreenState extends State<ApiSettingsScreen> {
 
             TextField(
               controller: _clientIdController,
-              decoration: const InputDecoration(
-                labelText: "Spotify Client ID",
+              decoration: InputDecoration(
+                labelText: t('spotify_client_id'),
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.key),
               ),
@@ -308,8 +296,8 @@ class _ApiSettingsScreenState extends State<ApiSettingsScreen> {
             TextField(
               controller: _clientSecretController,
               obscureText: true,
-              decoration: const InputDecoration(
-                labelText: "Spotify Client Secret",
+              decoration: InputDecoration(
+                labelText: t('spotify_client_secret'),
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.lock),
               ),
@@ -330,8 +318,8 @@ class _ApiSettingsScreenState extends State<ApiSettingsScreen> {
                 icon: Icon(_isLoggedIn ? Icons.check : Icons.login),
                 label: Text(
                   _isLoggedIn
-                      ? "VERBUNDEN (Klick zum Erneuern)"
-                      : "MIT SPOTIFY EINLOGGEN",
+                      ? t('connected_to_spotify')
+                      : t('signin_with_spotify'),
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -351,8 +339,8 @@ class _ApiSettingsScreenState extends State<ApiSettingsScreen> {
                   ),
                   onPressed: _logoutSpotify,
                   icon: const Icon(Icons.logout),
-                  label: const Text(
-                    "Von Spotify abmelden",
+                  label: Text(
+                    t('signout_spotify'),
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ),

@@ -4,6 +4,7 @@ import '../models/player.dart';
 import '../services/music_service.dart';
 import '../services/playlist_service.dart';
 import '../utils/NotificationHelper.dart';
+import '../services/language_service.dart';
 
 class GameController extends ChangeNotifier {
   final MusicService musicService = MusicService();
@@ -105,7 +106,7 @@ class GameController extends ChangeNotifier {
       drawNextSong();
       notifyListeners();
     } catch (e) {
-      NotificationHelper.showError("Fehler beim Initialisieren des Spiels");
+      NotificationHelper.showError(t('error_initializing'));
     }
   }
 
@@ -118,7 +119,7 @@ class GameController extends ChangeNotifier {
       }
       notifyListeners();
     } catch (e) {
-      NotificationHelper.showError("Fehler beim nächsten Song abspielen");
+      NotificationHelper.showError(t('error_playing_next_song'));
     }
   }
 
@@ -136,7 +137,7 @@ class GameController extends ChangeNotifier {
       return false;
     } catch (e) {
       NotificationHelper.showError(
-        "Fehler beim Nachschauen, ob das Spiel zu ende ist.",
+        t('error_check_ig_game_ended'),
       );
       return false;
     }
@@ -156,7 +157,7 @@ class GameController extends ChangeNotifier {
       }
       return nextIndex;
     } catch (e) {
-      NotificationHelper.showError("Fehler nächster Spieler am Zug.");
+      NotificationHelper.showError(t('error_next_player_turn'));
       return 0;
     }
   }
@@ -195,7 +196,7 @@ class GameController extends ChangeNotifier {
       notifyListeners();
       return isCorrect;
     } catch (e) {
-      NotificationHelper.showError("Fehler beim eintragen es Songs");
+      NotificationHelper.showError(t('error_adding_song'));
       return false;
     }
   }
@@ -212,7 +213,7 @@ class GameController extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      NotificationHelper.showError("Fehler beim abspielen der Musik");
+      NotificationHelper.showError(t('error_playing_music'));
       return false;
     }
   }
@@ -237,7 +238,7 @@ class GameController extends ChangeNotifier {
       });
       return leaderboard;
     } catch (e) {
-      NotificationHelper.showError("Fehler beim öffnen der Rangliste");
+      NotificationHelper.showError(t('error_opening_leaderboard'));
       return List.from(players);
     }
   }

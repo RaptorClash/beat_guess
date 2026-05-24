@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/song.dart';
 import '../utils/NotificationHelper.dart';
+import '../services/language_service.dart';
 
 class PlaylistService {
   Future<List<Song>> fetchSpotifyPlaylist(String url) async {
@@ -48,14 +49,14 @@ class PlaylistService {
             var trackData = item['item'] ?? item['track'];
             if (trackData == null) continue;
 
-            String title = trackData['name']?.toString() ?? "Unbekannter Titel";
+            String title = trackData['name']?.toString() ?? t('unknown_title');
 
-            String artist = "Unbekannter Künstler";
+            String artist = t('unknown_artist');
             if (trackData['artists'] != null &&
                 (trackData['artists'] as List).isNotEmpty) {
               artist =
                   trackData['artists'][0]['name']?.toString() ??
-                  "Unbekannter Künstler";
+                  t('unknown_artist');
             }
 
             String releaseDate =
@@ -71,24 +72,26 @@ class PlaylistService {
             ); // Parameter hinzufügen!
           }
         } catch (e) {
-          NotificationHelper.showError("Fehler beim parsen eines Songs: $e");
+          NotificationHelper.showError(
+            t('error_parsing_song', {'error': e.toString()}),
+          );
         }
 
         nextUrl = data['next'];
 
         if (nextUrl != null) {
           NotificationHelper.showInfo(
-            "LOG: Lade nächste Seite... (Bisher ${songs.length} Songs geladen)",
+            t('loading_next_page', {'totalsongs': songs.length.toString()}),
           );
         }
       }
 
       NotificationHelper.showSuccess(
-        "--- ERFOLG: ALLE ${songs.length} Songs geladen ---",
+        t('all_songs_loaded', {'totalsongs': songs.length.toString()}),
       );
       return songs;
     } catch (e) {
-      NotificationHelper.showError("Fehler beim auslesen der Spotifyplaylist");
+      NotificationHelper.showError(t('error_rading_spotify_playlist'));
       return songs;
     }
   }
@@ -119,7 +122,7 @@ class PlaylistService {
           .toList();
       await prefs.setStringList('saved_playlists', list);
     } catch (e) {
-      NotificationHelper.showError("Fehler beim Speichern der Playlist");
+      NotificationHelper.showError(t('error_saving_playlist'));
     }
   }
 
@@ -127,12 +130,11 @@ class PlaylistService {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('spotify_access_token');
-      if (token == null) return {"name": "Unbekannte Playlist", "imageUrl": ""};
+      if (token == null) return {"name": t('unknown_playlist'), "imageUrl": ""};
 
       Uri uri = Uri.parse(url);
       String playlistId = uri.pathSegments.last;
 
-      // Regulärer Spotify-API Endpunkt für Playlists
       var response = await http.get(
         Uri.parse('https://api.spotify.com/v1/playlists/$playlistId'),
         headers: {'Authorization': 'Bearer $token'},
@@ -152,10 +154,12 @@ class PlaylistService {
       }
     } catch (e) {
       NotificationHelper.showError(
-        "Fehler beim Abrufen der Playlist-Details: $e",
+        t('Fehler beim Abrufen der Playlist-Details: $e', {
+          'error': e.toString(),
+        }),
       );
     }
-    return {"name": "Eigene Playlist", "imageUrl": ""};
+    return {"name": t('my_playlist'), "imageUrl": ""};
   }
 
   Future<void> deletePlaylist(String url) async {
@@ -172,7 +176,7 @@ class PlaylistService {
           .toList();
       await prefs.setStringList('saved_playlists', list);
     } catch (e) {
-      NotificationHelper.showError("Fehler beim Löschen der Playlist");
+      NotificationHelper.showError(t('error_deleting_playlist'));
     }
   }
 }

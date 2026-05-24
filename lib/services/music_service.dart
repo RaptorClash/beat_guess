@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/song.dart';
 import '../utils/NotificationHelper.dart';
+import '../services/language_service.dart';
 
 class MusicService {
   bool isPlaying = false;
@@ -45,18 +46,22 @@ class MusicService {
           });
         } else if (response.statusCode == 404) {
           NotificationHelper.showError(
-            "FEHLER: Kein aktives Gerät gefunden! Bitte Spotify kurz am PC/Handy antippen.",
+            t('error_no_active_device_found'),
           );
         } else {
           NotificationHelper.showError(
-            "FEHLER bei Spotify Playback: Code ${response.statusCode}",
+            t('error_during_spotify_playback', {
+              'statusCode': response.statusCode.toString()
+            }),
           );
         }
       } catch (e) {
-        NotificationHelper.showError("Fehler im MusicService: $e");
+        NotificationHelper.showError(t('error_in_musicservice', {
+          'error': e.toString()
+        }));
       }
     } catch (e) {
-      NotificationHelper.showError("Fehler beim abspielen eines Songtitels");
+      NotificationHelper.showError(t('error_while_playing_song'));
     }
   }
 
@@ -73,10 +78,10 @@ class MusicService {
       );
 
       if (response.statusCode == 401) {
-        print("Token abgelaufen, bitte neu einloggen.");
+        print(t('token_expired'));
       }
     } catch (e) {
-      NotificationHelper.showError("Fehler beim stoppen der Musik");
+      NotificationHelper.showError(t('error_stopping_music'));
     }
   }
 }

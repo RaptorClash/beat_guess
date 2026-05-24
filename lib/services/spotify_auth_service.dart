@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 import '../utils/NotificationHelper.dart';
+import '../services/language_service.dart';
 
 class SpotifyAuthService {
   Future<void> exchangeCodeForToken(String code) async {
@@ -12,7 +13,7 @@ class SpotifyAuthService {
       String clientSecret = prefs.getString('spotify_client_secret') ?? '';
 
       if (clientId.isEmpty || clientSecret.isEmpty) {
-        print("FEHLER: Client ID oder Secret fehlen in den SharedPreferences!");
+        print(t('error_client_or_secret_missing'));
         return;
       }
 
@@ -22,7 +23,7 @@ class SpotifyAuthService {
           ? "http://127.0.0.1:8080/"
           : "beatguess://callback";
 
-      print("Sende Token-Anfrage an Spotify...");
+      print(t('send_token_request_to_spotify'));
 
       var response = await http.post(
         Uri.parse('https://accounts.spotify.com/api/token'),
@@ -53,15 +54,16 @@ class SpotifyAuthService {
           DateTime.now().millisecondsSinceEpoch + 3600000,
         );
 
-        print("ERFOLG: Spotify Token wurde gespeichert!");
-        NotificationHelper.showSuccess("Spotify Token wurde gespeichert!");
+        NotificationHelper.showSuccess(t('spotify_token_saved'));
       } else {
         NotificationHelper.showError(
-          "Fehler vom Spotify-Server: Code ${response.statusCode}",
+          t('error_spotify_server', {'error': response.statusCode.toString()}),
         );
       }
     } catch (e) {
-      NotificationHelper.showError("Fehler beim Verarbeiten des Logins: $e");
+      NotificationHelper.showError(
+        t('error_processing_login', {'error': e.toString()}),
+      );
     }
   }
 
@@ -82,7 +84,7 @@ class SpotifyAuthService {
       }
       return true;
     } catch (e) {
-      NotificationHelper.showError("Fehler beim aktualisieren des Logins");
+      NotificationHelper.showError(t('erro_updating_login'));
       return false;
     }
   }
@@ -119,7 +121,9 @@ class SpotifyAuthService {
       }
       return false;
     } catch (e) {
-      NotificationHelper.showError("Fehler beim aktualisieren des Refresh Tokens");
+      NotificationHelper.showError(
+        t('error_updating_refresh_token'),
+      );
       return false;
     }
   }

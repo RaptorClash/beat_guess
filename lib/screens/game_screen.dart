@@ -8,6 +8,7 @@ import '../widgets/game_stats_banner.dart';
 import '../widgets/player_queue_list.dart';
 import '../controllers/game_controller.dart';
 import '../utils/NotificationHelper.dart';
+import '../services/language_service.dart';
 
 class GameScreen extends StatefulWidget {
   final List<String> playerNames;
@@ -51,13 +52,10 @@ class _GameScreenState extends State<GameScreen>
       _controller.addListener(_onControllerChanged);
 
       _controller.initGame(() {
-        showDialogMsg(
-          "Playlist konnte nicht geladen werden. Nutze Standard-Songs.",
-          Colors.orange,
-        );
+        showDialogMsg(t('playlist_couuld_not_loaded'), Colors.orange);
       });
     } catch (e) {
-      NotificationHelper.showError("Fehler beim initialisieren der game_screen.dart");
+      NotificationHelper.showError(t('error_initializing_game_screen'));
     }
   }
 
@@ -73,7 +71,7 @@ class _GameScreenState extends State<GameScreen>
       _controller.stopMusic();
       super.dispose();
     } catch (e) {
-      NotificationHelper.showError("Fehler beim beenden");
+      NotificationHelper.showError(t('error_closing'));
     }
   }
 
@@ -98,7 +96,7 @@ class _GameScreenState extends State<GameScreen>
         }
       });
     } catch (e) {
-      NotificationHelper.showError("Fehler beim nächsten Zug machen.");
+      NotificationHelper.showError(t('mistake_on_next_move'));
     }
   }
 
@@ -123,7 +121,7 @@ class _GameScreenState extends State<GameScreen>
         if (mounted) nextTurn();
       });
     } catch (e) {
-      NotificationHelper.showError("Fehler beim Karten platzieren");
+      NotificationHelper.showError(t('error_placing_card'));
     }
   }
 
@@ -144,7 +142,7 @@ class _GameScreenState extends State<GameScreen>
               const Icon(Icons.emoji_events, color: Colors.amber, size: 60),
               const SizedBox(height: 10),
               Text(
-                '🎉 ${winner.name} GEWINNT! 🎉',
+                '🎉 ${winner.name} ${t('won')} 🎉',
                 textAlign: TextAlign.center,
               ),
             ],
@@ -156,14 +154,20 @@ class _GameScreenState extends State<GameScreen>
               children: [
                 Text(
                   widget.playUntilAllFinish
-                      ? 'Alle Spieler haben ${widget.cardsToWin} Karten gesammelt!\n${winner.name} war am schnellsten.'
-                      : '${winner.name} hat als Erstes ${widget.cardsToWin} Karten gesammelt!',
+                      ? t('win_all_finish', {
+                          'cards': widget.cardsToWin.toString(),
+                          'winner': winner.name,
+                        })
+                      : t('win_first', {
+                          'cards': widget.cardsToWin.toString(),
+                          'winner': winner.name,
+                        }),
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 16),
                 ),
                 const SizedBox(height: 20),
-                const Text(
-                  'Rangliste:',
+                Text(
+                  t('rankings'),
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -219,8 +223,8 @@ class _GameScreenState extends State<GameScreen>
                 Navigator.of(context).pop();
                 Navigator.of(context).pop();
               },
-              child: const Text(
-                'Hauptmenü',
+              child: Text(
+                t('main_menu'),
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
@@ -228,7 +232,9 @@ class _GameScreenState extends State<GameScreen>
         ),
       );
     } catch (e) {
-      NotificationHelper.showError("Fehler beim anzeigen des Siegesbildschirms");
+      NotificationHelper.showError(
+        t('error_displaying_victory_screen'),
+      );
     }
   }
 
@@ -249,7 +255,7 @@ class _GameScreenState extends State<GameScreen>
         ),
       );
     } catch (e) {
-      NotificationHelper.showError("Fehler beim anzeigen der Snackbar.");
+      NotificationHelper.showError(t('error_displaying_snackbar'));
     }
   }
 
@@ -376,8 +382,8 @@ class _GameScreenState extends State<GameScreen>
       width: double.infinity,
       child: Column(
         children: [
-          const Text(
-            "Zieh die Karte an die richtige Stelle!",
+          Text(
+            t('drag_card_to_right_spot'),
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.bold,
@@ -431,10 +437,10 @@ class _GameScreenState extends State<GameScreen>
                               ),
                         label: Text(
                           _controller.isMusicLoading
-                              ? "Lade Audio..."
+                              ? t('loading_audio')
                               : (isPlaying
-                                    ? "Song wird abgespielt..."
-                                    : "Song abspielen (30s)"),
+                                    ? t('song_playing')
+                                    : t('play_song')),
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
