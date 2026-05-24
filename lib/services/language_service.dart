@@ -112,6 +112,7 @@ class LanguageService extends ChangeNotifier {
       'loading_audio': "Lade Audio...",
       'song_playing': "Song wird abgespielt...",
       'play_song': "Song abspielen (30s)",
+      'points': "Punkte",
 
       //game_controller.dart:
       'error_initializing _game': "Fehler beim Initialisieren des Spiels",
@@ -157,7 +158,27 @@ class LanguageService extends ChangeNotifier {
       'error_spotify_server': "Fehler vom Spotify-Server: Code {error}",
       'error_processing_login': "Fehler beim Verarbeiten des Logins: {error}",
       'erro_updating_login': "Fehler beim aktualisieren des Logins",
-      'error_updating_refresh_token': "Fehler beim aktualisieren des Refresh Tokens"
+      'error_updating_refresh_token':
+          "Fehler beim aktualisieren des Refresh Tokens",
+
+      //language_service.dart
+      'total': "Gesamt",
+      'remaining': "Übrig",
+      'error': "Fehler",
+
+      //player_switch_dialog.dart
+      'pass_device_to': "Gerät weitergeben an:",
+      'im_ready': "Bin bereit!",
+
+      //song_card.dart
+      'what_year_is_song_from': "In welches Jahr gehört dieser Song?",
+
+      //timeline_slot.dart
+      'drop_here': "HIER LOSLASSEN",
+      'insert_here': "+ Hier einfügen +",
+
+      //player_queue_list.dart
+      'next_move': "Am Zug:",
     },
     'en': {
       'app_title': 'BeatGuess',
@@ -238,6 +259,7 @@ class LanguageService extends ChangeNotifier {
       'loading_audio': "Loading audio...",
       'song_playing': "Song playing...",
       'play_song': "Play song (30s)",
+      'points': 'Points',
 
       //game_controller.dart
       'error_initializing_game': "Error initializing the game",
@@ -273,7 +295,7 @@ class LanguageService extends ChangeNotifier {
       'my_playlist': "My playlist",
       'error_deleting_playlist': "Error deleting the playlist",
 
-            //spotify_auth_service.dart
+      //spotify_auth_service.dart
       'error_client_or_secret_missing':
           "ERROR: Client ID or secret is missing from SharedPreferences!",
       'send_token_request_to_spotify': "Sending token request to Spotify...",
@@ -281,7 +303,26 @@ class LanguageService extends ChangeNotifier {
       'error_spotify_server': "Error from the Spotify server: Code {error}",
       'error_processing_login': "Error processing login: {error}",
       'error_updating_login': "Error updating the login",
-      'error_updating_refresh_token': "Error updating the refresh token"
+      'error_updating_refresh_token': "Error updating the refresh token",
+
+      //language_service.dart
+      'total': "Total",
+      'remaining': "Remaining",
+      'error': "Error",
+
+      //player_switch_dialog.dart
+      'pass_device_to': "Pass device to:",
+      'im_ready': "I'm ready!",
+
+      //song_card.dart
+      'what_year_is_song_from': "What year is this song from?",
+
+      //timeline_slot.dart
+      'drop_here': "DROP HERE",
+      'insert_here': "+ Insert here +",
+
+      //player_queue_list.dart
+      'next_move': "Next move:",
     },
   };
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/language_service.dart';
 
 class PlayerSwitchDialog extends StatefulWidget {
   final String playerName;
@@ -75,8 +76,8 @@ class _PlayerSwitchDialogState extends State<PlayerSwitchDialog>
               ),
             ),
             const SizedBox(height: 24),
-            const Text(
-              'Gerät weitergeben an:',
+            Text(
+              t('pass_device_to'),
               style: TextStyle(
                 color: Colors.white70,
                 fontSize: 16,
@@ -116,8 +117,8 @@ class _PlayerSwitchDialogState extends State<PlayerSwitchDialog>
                       onPressed: () {
                         Navigator.of(context).pop();
                       },
-                      child: const Text(
-                        'Bin bereit!',
+                      child: Text(
+                        'im_ready',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w900,

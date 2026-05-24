@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/player.dart';
+import '../services/language_service.dart';
 
 class PlayerQueueList extends StatelessWidget {
   final List<Player> players;
@@ -63,7 +64,7 @@ class PlayerQueueList extends StatelessWidget {
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  isCurrent ? "Am Zug: ${p.name}" : p.name,
+                  isCurrent ? "${t('next_move')} ${p.name}" : p.name,
                   style: TextStyle(
                     color: isCurrent
                         ? Colors.black87

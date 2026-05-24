@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/language_service.dart';
 
 class GameStatsBanner extends StatelessWidget {
   final int totalSongs;
@@ -35,9 +36,9 @@ class GameStatsBanner extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildStatItem(Icons.music_note, 'Gesamt', '$totalSongs', Colors.white),
-          _buildStatItem(Icons.layers, 'Übrig', '$songsLeft', Colors.white),
-          _buildStatItem(Icons.close, 'Fehler', '$wrongGuesses', Colors.redAccent.shade100),
+          _buildStatItem(Icons.music_note, t('total'), '$totalSongs', Colors.white),
+          _buildStatItem(Icons.layers, t('remaining'), '$songsLeft', Colors.white),
+          _buildStatItem(Icons.close, t('error'), '$wrongGuesses', Colors.redAccent.shade100),
         ],
       ),
     );

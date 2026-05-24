@@ -543,8 +543,8 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
         onPressed: _isStarting ? null : startGame,
         child: _isStarting
             ? const CircularProgressIndicator(color: Colors.white)
-            : const Text(
-                "SPIEL STARTEN",
+            : Text(
+                t('start_game'),
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,

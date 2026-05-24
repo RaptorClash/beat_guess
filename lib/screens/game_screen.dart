@@ -342,8 +342,8 @@ class _GameScreenState extends State<GameScreen>
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              const Text(
-                'Punkte',
+              Text(
+                t('points'),
                 style: TextStyle(
                   fontSize: 12,
                   color: Colors.black54,

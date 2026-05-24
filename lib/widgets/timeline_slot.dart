@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/song.dart';
+import '../services/language_service.dart';
 
 class TimelineSlot extends StatelessWidget {
   final Function(Song) onAccept;
@@ -30,7 +31,7 @@ class TimelineSlot extends StatelessWidget {
             ),
             child: Center(
               child: Text(
-                isHovering ? "HIER LOSLASSEN" : "+ Hier einfügen +", 
+                isHovering ? "drop_here" : t('insert_here'), 
                 style: TextStyle(
                   color: isHovering ? Colors.white : Colors.deepPurple, 
                   fontWeight: FontWeight.bold,

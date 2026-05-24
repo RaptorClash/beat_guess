@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/song.dart';
+import '../services/language_service.dart';
 
 class YearGroup {
   final int year;
@@ -90,14 +91,14 @@ class SongCard extends StatelessWidget {
         child: Row(
           children: [
             if (isSecret) ...[
-              const Expanded(
+              Expanded(
                 child: Center(
                   child: Column(
                     children: [
                       Icon(Icons.help_outline, size: 40, color: Colors.white),
                       SizedBox(height: 8),
                       Text(
-                        "In welches Jahr gehört dieser Song?", 
+                        t('what_year_is_song_from'), 
                         style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                         textAlign: TextAlign.center,
                       )
