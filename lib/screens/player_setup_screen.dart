@@ -80,8 +80,12 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
       if (url.isNotEmpty) {
         bool alreadySaved = _savedPlaylists.any((p) => p['url'] == url);
         if (!alreadySaved) {
-          String name = await _playlistService.fetchPlaylistName(url);
-          await _playlistService.savePlaylist(name, url);
+          var details = await _playlistService.fetchPlaylistDetails(url);
+          await _playlistService.savePlaylist(
+            details['name']!,
+            url,
+            details['imageUrl']!,
+          );
         }
       }
 
@@ -103,6 +107,18 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
     } catch (e) {
       NotificationHelper.showError("Fehler beim starten des Spiels.");
     }
+  }
+
+  Future<void> _deletePlaylist(String url) async {
+    await _playlistService.deletePlaylist(url);
+
+    // Falls die gelöschte Playlist gerade im Textfeld eingetragen ist, leeren wir es
+    if (_playlistController.text == url) {
+      _playlistController.clear();
+    }
+
+    // UI neu laden
+    _loadData();
   }
 
   @override
@@ -377,38 +393,123 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
               ),
             ),
             if (_savedPlaylists.isNotEmpty) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
               const Text(
-                "Zuletzt gespielt:",
+                "Playlist Bibliothek:",
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Colors.grey,
+                  color: Colors.black87,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               SizedBox(
-                height: 40,
+                height: 130,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   itemCount: _savedPlaylists.length,
                   separatorBuilder: (context, index) =>
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 12),
                   itemBuilder: (context, index) {
                     var playlist = _savedPlaylists[index];
-                    return ActionChip(
-                      label: Text(playlist['name']!),
-                      avatar: const Icon(
-                        Icons.history,
-                        size: 16,
-                        color: Colors.deepPurple,
-                      ),
-                      backgroundColor: Colors.deepPurple.shade50,
-                      onPressed: () {
+                    String imageUrl = playlist['imageUrl'] ?? "";
+                    bool isSelected =
+                        _playlistController.text == playlist['url'];
+
+                    return GestureDetector(
+                      onTap: () {
                         setState(
                           () => _playlistController.text = playlist['url']!,
                         );
                       },
+                      child: Container(
+                        width: 100,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Stack erlaubt es uns, das X über das Bild zu legen
+                            Stack(
+                              children: [
+                                Container(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? Colors.deepPurple
+                                          : Colors.transparent,
+                                      width: 3,
+                                    ),
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        color: Colors.black12,
+                                        blurRadius: 4,
+                                        offset: Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(9),
+                                    child: imageUrl.isNotEmpty
+                                        ? Image.network(
+                                            imageUrl,
+                                            width: 100,
+                                            height: 100,
+                                            fit: BoxFit.cover,
+                                            errorBuilder:
+                                                (context, error, stackTrace) =>
+                                                    _buildPlaceholderImage(),
+                                          )
+                                        : _buildPlaceholderImage(),
+                                  ),
+                                ),
+                                // Das "X" Icon zum Entfernen oben rechts
+                                Positioned(
+                                  top: 6,
+                                  right: 6,
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      // Verhindert, dass das Antippen des X auch die Playlist auswählt
+                                      _deletePlaylist(playlist['url']!);
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withOpacity(
+                                          0.6,
+                                        ), // Halbtransparenter Kreis
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.close,
+                                        size: 14,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              playlist['name']!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.w600,
+                                color: isSelected
+                                    ? Colors.deepPurple
+                                    : Colors.black87,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     );
                   },
                 ),
@@ -417,6 +518,15 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildPlaceholderImage() {
+    return Container(
+      width: 100,
+      height: 100,
+      color: Colors.deepPurple.shade100,
+      child: const Icon(Icons.music_note, color: Colors.deepPurple, size: 40),
     );
   }
 
