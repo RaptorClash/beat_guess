@@ -188,6 +188,20 @@ class LanguageService extends ChangeNotifier {
           'Willst du das Spiel wirklich abbrechen? Der aktuelle Fortschritt geht verloren.',
       'cancel': 'Abbrechen',
       'yes_leave': 'Ja, verlassen',
+
+      //update_service.dart
+      'error_github_update_check': "Fehler beim GitHub Update-Check: {error}",
+      'download_update':
+          '\n\nDas Update wird im Browser heruntergeladen. Bitte schließe die App vor der Installation.',
+      'newVersionAvailable_iOS':
+          "Eine neue Version ist auf GitHub verfügbar. Unter iOS musst du Updates manuell über deinen Bereitstellungsweg beziehen.",
+      'downloadLatestVersion':
+          "Möchtest du die neueste Version jetzt herunterladen und installieren?",
+      'close': "Schließen",
+      'later': "Später",
+      'update': "Aktualisieren",
+      'error_android_update': "Fehler beim Android-Update: {error}",
+      'unable_open_url': "Konnte URL nicht öffnen:",
     },
     'en': {
       'app_title': 'BeatGuess',
@@ -341,6 +355,20 @@ class LanguageService extends ChangeNotifier {
           'Do you really want to quit the game? Your current progress will be lost.',
       'cancel': 'Cancel',
       'yes_leave': 'Yes, leave',
+
+      // update_service.dart
+      'error_github_update_check': 'Error checking for GitHub updates: {error}',
+      'download_update':
+          '\n\nThe update is being downloaded in the browser. Please close the app before installing.',
+      'newVersionAvailable_iOS':
+          'A new version is available on GitHub. On iOS, you must manually retrieve updates via your distribution channel.',
+      'downloadLatestVersion':
+          'Would you like to download and install the latest version now?',
+      'close': 'Close',
+      'later': 'Later',
+      'update': 'Update',
+      'error_android_update': 'Android update error: {error}',
+      'unable_open_url': 'Could not open URL:',
     },
   };
 
