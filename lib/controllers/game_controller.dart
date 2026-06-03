@@ -91,16 +91,15 @@ class GameController extends ChangeNotifier {
     onConnectionLost?.call();
   }
 
-  Future<void> startAsHost(String hostName) async {
+  // --- MULTIPLAYER LOBBY ---
+  Future<void> startAsHost(String hostName, {bool isBluetooth = false}) async {
     isMultiplayer = true;
     localPlayerName = hostName;
-    playerNames.add(hostName);
+    playerNames.add(hostName); 
 
-    hostCode = await networkService.startHosting();
+    hostCode = await networkService.startHosting(bluetooth: isBluetooth, name: hostName);
     if (hostCode == null) {
-      NotificationHelper.showError(
-        "Konnte Lobby nicht erstellen (WLAN prüfen)",
-      );
+      NotificationHelper.showError("Konnte Lobby nicht erstellen");
     }
     notifyListeners();
   }
@@ -112,6 +111,23 @@ class GameController extends ChangeNotifier {
     notifyListeners();
 
     bool success = await networkService.joinGame(code);
+    if (success) {
+      networkService.sendAction({'type': 'JOIN', 'name': clientName});
+    } else {
+      isGameLoading = false;
+      NotificationHelper.showError("Verbindung fehlgeschlagen");
+      notifyListeners();
+    }
+    return success;
+  }
+
+  Future<bool> joinAsBluetoothClient(String endpointId, String clientName) async {
+    isMultiplayer = true;
+    localPlayerName = clientName;
+    isGameLoading = true;
+    notifyListeners();
+
+    bool success = await networkService.joinBluetoothGame(endpointId, clientName);
     if (success) {
       networkService.sendAction({'type': 'JOIN', 'name': clientName});
     } else {

@@ -11,8 +11,14 @@ import '../controllers/game_controller.dart';
 class PlayerSetupScreen extends StatefulWidget {
   final bool isHost;
   final String? hostName;
+  final bool isBluetooth;
 
-  const PlayerSetupScreen({super.key, required this.isHost, this.hostName});
+  const PlayerSetupScreen({
+    super.key,
+    required this.isHost,
+    this.hostName,
+    this.isBluetooth = false,
+  });
 
   @override
   State<PlayerSetupScreen> createState() => _PlayerSetupScreenState();
@@ -40,7 +46,10 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
     _controller = GameController();
 
     if (widget.isHost && widget.hostName != null) {
-      _controller.startAsHost(widget.hostName!);
+      _controller.startAsHost(
+        widget.hostName!,
+        isBluetooth: widget.isBluetooth,
+      );
       _controller.addListener(() {
         if (mounted) setState(() {});
       });
@@ -220,6 +229,7 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // LOBBY CODE (Nur für Host)
+              // LOBBY CODE (Nur für Host)
               if (widget.isHost) ...[
                 Container(
                   padding: const EdgeInsets.all(16),
@@ -229,22 +239,36 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
                   ),
                   child: Column(
                     children: [
-                      const Text(
-                        "Raum-Code für Freunde:",
-                        style: TextStyle(color: Colors.white70, fontSize: 16),
+                      Text(
+                        widget.isBluetooth
+                            ? "Bluetooth Radar aktiv 📡"
+                            : "Raum-Code für Freunde:",
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 16,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       _controller.hostCode == null
                           ? const CircularProgressIndicator(color: Colors.white)
-                          : Text(
-                              _controller.hostCode!,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 40,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 4,
-                              ),
-                            ),
+                          : (widget.isBluetooth
+                                ? const Text(
+                                    "Freunde können nun beitreten!",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  )
+                                : Text(
+                                    _controller.hostCode!,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 40,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 4,
+                                    ),
+                                  )),
                     ],
                   ),
                 ),

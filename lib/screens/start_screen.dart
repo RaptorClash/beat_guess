@@ -2,6 +2,9 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:nearby_connections/nearby_connections.dart';
+import 'package:permission_handler/permission_handler.dart'; // NEU: Der offizielle Permission-Manager
+
 import 'player_setup_screen.dart';
 import 'api_settings_screen.dart';
 import 'game_screen.dart';
@@ -109,7 +112,6 @@ class _StartScreenState extends State<StartScreen> {
     );
   }
 
-
   void _showConnectionMethodMenu() {
     bool isDesktop = kIsWeb;
     if (!kIsWeb) {
@@ -180,7 +182,7 @@ class _StartScreenState extends State<StartScreen> {
                 onTap: () {
                   Navigator.pop(context);
                   if (isBluetooth) {
-                     _showBluetoothRadarPlaceholder();
+                     _showBluetoothNameDialog(); 
                   } else {
                      _showWlanJoinDialog();
                   }
@@ -205,18 +207,34 @@ class _StartScreenState extends State<StartScreen> {
         ),
         actions: [
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               if (nameController.text.trim().isNotEmpty) {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => PlayerSetupScreen(
-                      isHost: true,
-                      hostName: nameController.text.trim(),
+                
+                // NEU: Der Host fragt vor dem Erstellen die nötigen Berechtigungen ab!
+                if (isBluetooth && Platform.isAndroid) {
+                  await [
+                    Permission.location,
+                    Permission.bluetooth,
+                    Permission.bluetoothAdvertise,
+                    Permission.bluetoothConnect,
+                    Permission.bluetoothScan,
+                    Permission.nearbyWifiDevices,
+                  ].request();
+                }
+
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => PlayerSetupScreen(
+                        isHost: true,
+                        hostName: nameController.text.trim(),
+                        isBluetooth: isBluetooth, 
+                      ),
                     ),
-                  ),
-                );
+                  );
+                }
               }
             },
             child: const Text("Lobby eröffnen"),
@@ -226,15 +244,33 @@ class _StartScreenState extends State<StartScreen> {
     );
   }
 
-  void _showBluetoothRadarPlaceholder() {
-     showDialog(
-       context: context, 
-       builder: (context) => AlertDialog(
-         title: const Text("Bluetooth Radar 📡"),
-         content: const Text("Hier kommt im nächsten Schritt eine Liste hin, in der du die Bluetooth-Handys deiner Freunde auswählen kannst, anstatt einen Code einzutippen!"),
-         actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text("Okay"))],
-       )
-     );
+  void _showBluetoothNameDialog() {
+    final nameController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Dein Spielername"),
+        content: TextField(controller: nameController, decoration: const InputDecoration(hintText: "Wie heißt du?", border: OutlineInputBorder())),
+        actions: [
+          ElevatedButton(
+            onPressed: () {
+              if (nameController.text.trim().isNotEmpty) {
+                Navigator.pop(context);
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (context) => BluetoothRadarDialog(
+                    controller: GameController(),
+                    playerName: nameController.text.trim(),
+                  ),
+                );
+              }
+            },
+            child: const Text("Radar öffnen"),
+          )
+        ],
+      ),
+    );
   }
 
   void _showWlanJoinDialog() {
@@ -336,7 +372,7 @@ class _StartScreenState extends State<StartScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                     textStyle: const TextStyle(fontSize: 20),
                   ),
-                  onPressed: _showConnectionMethodMenu,
+                  onPressed: _showConnectionMethodMenu, 
                   icon: const Icon(Icons.sensors),
                   label: const Text("Multiplayer"),
                 ),
@@ -345,6 +381,118 @@ class _StartScreenState extends State<StartScreen> {
           ),
         );
       },
+    );
+  }
+}
+
+// ==========================================================
+// DAS BLUETOOTH RADAR FÜR DIE FREUNDE
+// ==========================================================
+class BluetoothRadarDialog extends StatefulWidget {
+  final GameController controller;
+  final String playerName;
+
+  const BluetoothRadarDialog({super.key, required this.controller, required this.playerName});
+
+  @override
+  State<BluetoothRadarDialog> createState() => _BluetoothRadarDialogState();
+}
+
+class _BluetoothRadarDialogState extends State<BluetoothRadarDialog> {
+  final Map<String, String> _devices = {};
+  bool _isConnecting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _startScan();
+  }
+
+  Future<void> _startScan() async {
+    // NEU: Fragt auf Android die Berechtigungen sauber über den Handler ab!
+    if (Platform.isAndroid) {
+      await [
+        Permission.location,
+        Permission.bluetooth,
+        Permission.bluetoothAdvertise,
+        Permission.bluetoothConnect,
+        Permission.bluetoothScan,
+        Permission.nearbyWifiDevices,
+      ].request();
+    }
+
+    await widget.controller.networkService.startScanning(
+      myName: widget.playerName,
+      onDeviceFound: (id, name) {
+        setState(() => _devices[id] = name);
+      },
+      onDeviceLost: (id) {
+        setState(() => _devices.remove(id));
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    widget.controller.networkService.stopScanning();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text("Radar 📡", textAlign: TextAlign.center),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text("Suche nach Lobbys in der Nähe..."),
+          const SizedBox(height: 16),
+          if (_devices.isEmpty)
+             const Padding(
+               padding: EdgeInsets.all(20.0),
+               child: CircularProgressIndicator(),
+             )
+          else
+            SizedBox(
+              height: 200,
+              width: double.maxFinite,
+              child: ListView.builder(
+                itemCount: _devices.length,
+                itemBuilder: (context, index) {
+                  String id = _devices.keys.elementAt(index);
+                  String hostName = _devices[id]!;
+
+                  return Card(
+                    color: Colors.deepPurple.shade50,
+                    child: ListTile(
+                      leading: const Icon(Icons.phone_android, color: Colors.deepPurple),
+                      title: Text("Lobby: $hostName", style: const TextStyle(fontWeight: FontWeight.bold)),
+                      trailing: _isConnecting ? const CircularProgressIndicator() : const Icon(Icons.login),
+                      onTap: _isConnecting ? null : () async {
+                        setState(() => _isConnecting = true);
+                        bool success = await widget.controller.joinAsBluetoothClient(id, widget.playerName);
+                        
+                        if (mounted) {
+                          setState(() => _isConnecting = false);
+                          if (success) {
+                            Navigator.pop(context);
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => ClientWaitingScreen(controller: widget.controller)));
+                          }
+                        }
+                      },
+                    ),
+                  );
+                },
+              ),
+            ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text("Abbrechen"),
+        )
+      ],
     );
   }
 }
