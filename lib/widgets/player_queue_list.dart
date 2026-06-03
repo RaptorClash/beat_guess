@@ -72,6 +72,22 @@ class PlayerQueueList extends StatelessWidget {
                     fontWeight: isCurrent ? FontWeight.bold : FontWeight.w600,
                   ),
                 ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: isCurrent ? Colors.black12 : Colors.deepPurple.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    "${p.score}",
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: isCurrent ? Colors.black87 : Colors.deepPurple,
+                    ),
+                  ),
+                ),
               ],
             ),
           );
