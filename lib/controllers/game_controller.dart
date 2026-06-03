@@ -4,81 +4,127 @@ import '../models/player.dart';
 import '../services/music_service.dart';
 import '../services/playlist_service.dart';
 import '../utils/NotificationHelper.dart';
-import '../services/language_service.dart';
+import '../services/network_service.dart';
 
 class GameController extends ChangeNotifier {
   final MusicService musicService = MusicService();
   final PlaylistService _playlistService = PlaylistService();
+  final NetworkService networkService = NetworkService();
 
-  final List<String> playerNames;
-  final int cardsToWin;
-  final String playlistUrl;
-  final bool playUntilAllFinish;
+  List<String> playerNames = [];
+  String localPlayerName = '';
+
+  int cardsToWin = 10;
+  String playlistUrl = '';
+  bool playUntilAllFinish = false;
 
   List<Player> players = [];
   int currentPlayerIndex = 0;
   Song? currentGuessSong;
   bool isGameLoading = true;
+
   bool isMusicLoading = false;
+  bool isMusicPlaying = false;
+
   int totalSongs = 0;
+  List<Song> unplayedSongs = [];
+  int _clientUnplayedCount = 0;
 
-  List<Song> unplayedSongs = [
-    Song(
-      "Take On Me",
-      "a-ha",
-      1984,
-      "spotify:track:2WfaOiMkCvy7F5fcp2zZ8L",
-      120000,
-    ),
-    Song(
-      "Smells Like Teen Spirit",
-      "Nirvana",
-      1991,
-      "spotify:track:1f3yAtsJtY87CTmM8RLnxf",
-      120000,
-    ),
-    Song(
-      "Macarena",
-      "Los del Río",
-      1993,
-      "spotify:track:1hlM2XzHn0GzXW2H36x5sK",
-      120000,
-    ),
-    Song(
-      "Rolling in the Deep",
-      "Adele",
-      2010,
-      "spotify:track:4OSBTYWVwsQhGLF9NHvIbR",
-      120000,
-    ),
-    Song(
-      "Blinding Lights",
-      "The Weeknd",
-      2019,
-      "spotify:track:0VjIjW4GlUZAMYd2vXMi3b",
-      120000,
-    ),
-    Song(
-      "As It Was",
-      "Harry Styles",
-      2022,
-      "spotify:track:4LRPiXqCikLlN15c3yImP7",
-      120000,
-    ),
-  ];
+  bool isMultiplayer = false;
+  String? hostCode;
 
-  Player get currentPlayer => players[currentPlayerIndex];
+  Function(bool isCorrect, Song song)? onGuessEvaluated;
+  VoidCallback? onGameEnd;
+  VoidCallback? onConnectionLost; // NEU
+
+  Player get currentPlayer =>
+      players.isNotEmpty ? players[currentPlayerIndex] : Player(name: 'Dummy');
   int get songsLeft =>
-      unplayedSongs.length + (currentGuessSong != null ? 1 : 0);
+      (networkService.isClient ? _clientUnplayedCount : unplayedSongs.length) +
+      (currentGuessSong != null ? 1 : 0);
 
-  GameController({
-    required this.playerNames,
-    required this.cardsToWin,
-    required this.playlistUrl,
-    required this.playUntilAllFinish,
-  });
+  bool get isMyTurn {
+    if (!isMultiplayer) return true;
+    if (players.isEmpty) return false;
+    return currentPlayer.name == localPlayerName;
+  }
+
+  GameController() {
+    networkService.onStateReceived = _applyStateFromHost;
+    networkService.onActionReceived = _handleClientAction;
+
+    networkService.onPlayerDisconnected = _handlePlayerDisconnect;
+    networkService.onHostDisconnected = _handleHostDisconnect;
+  }
+
+  void _handlePlayerDisconnect(String name) {
+    if (!isGameLoading && players.isNotEmpty) {
+      int disconnectedIndex = players.indexWhere((p) => p.name == name);
+      if (disconnectedIndex != -1) {
+        players.removeAt(disconnectedIndex);
+
+        if (players.isEmpty) {
+          networkService.broadcastState({'type': 'GAME_END', 'players': []});
+          onGameEnd?.call();
+          return;
+        }
+
+        if (disconnectedIndex < currentPlayerIndex) {
+          currentPlayerIndex--;
+        } else if (disconnectedIndex == currentPlayerIndex) {
+          currentPlayerIndex = currentPlayerIndex % players.length;
+          if (isMusicPlaying) {
+            musicService.stopMusic();
+            isMusicPlaying = false;
+          }
+          drawNextSong();
+        }
+        _broadcastGameState();
+      }
+    } else {
+      playerNames.remove(name);
+      _broadcastLobbyState();
+    }
+  }
+
+  void _handleHostDisconnect() {
+    onConnectionLost?.call();
+  }
+
+  Future<void> startAsHost(String hostName) async {
+    isMultiplayer = true;
+    localPlayerName = hostName;
+    playerNames.add(hostName);
+
+    hostCode = await networkService.startHosting();
+    if (hostCode == null) {
+      NotificationHelper.showError(
+        "Konnte Lobby nicht erstellen (WLAN prüfen)",
+      );
+    }
+    notifyListeners();
+  }
+
+  Future<bool> joinAsClient(String code, String clientName) async {
+    isMultiplayer = true;
+    localPlayerName = clientName;
+    isGameLoading = true;
+    notifyListeners();
+
+    bool success = await networkService.joinGame(code);
+    if (success) {
+      networkService.sendAction({'type': 'JOIN', 'name': clientName});
+    } else {
+      isGameLoading = false;
+      NotificationHelper.showError("Verbindung fehlgeschlagen");
+      notifyListeners();
+    }
+    return success;
+  }
 
   Future<void> initGame(VoidCallback onPlaylistLoadError) async {
+    if (networkService.isClient) return;
+
     try {
       players = playerNames.map((name) => Player(name: name)).toList();
 
@@ -97,149 +143,236 @@ class GameController extends ChangeNotifier {
       unplayedSongs.shuffle();
 
       for (var player in players) {
-        if (unplayedSongs.isNotEmpty) {
+        if (unplayedSongs.isNotEmpty)
           player.timeline.add(unplayedSongs.removeLast());
-        }
       }
 
       isGameLoading = false;
       drawNextSong();
-      notifyListeners();
     } catch (e) {
-      NotificationHelper.showError(t('error_initializing'));
+      NotificationHelper.showError('Fehler beim Initialisieren');
     }
   }
 
   void drawNextSong() {
-    try {
-      if (unplayedSongs.isNotEmpty) {
-        currentGuessSong = unplayedSongs.removeLast();
-      } else {
-        currentGuessSong = null;
-      }
-      notifyListeners();
-    } catch (e) {
-      NotificationHelper.showError(t('error_playing_next_song'));
+    if (networkService.isClient) return;
+    if (unplayedSongs.isNotEmpty) {
+      currentGuessSong = unplayedSongs.removeLast();
+    } else {
+      currentGuessSong = null;
     }
+    _broadcastGameState();
   }
 
-  bool checkGameEnd() {
-    try {
-      if (!playUntilAllFinish && players.any((p) => p.score >= cardsToWin)) {
-        return true;
-      }
-      if (playUntilAllFinish && players.every((p) => p.score >= cardsToWin)) {
-        return true;
-      }
-      if (unplayedSongs.isEmpty && currentGuessSong == null) {
-        return true;
-      }
-      return false;
-    } catch (e) {
-      NotificationHelper.showError(
-        t('error_check_ig_game_ended'),
-      );
+  bool guessPlacement(int index) {
+    if (networkService.isClient) {
+      networkService.sendAction({'type': 'GUESS', 'index': index});
       return false;
     }
-  }
 
-  int getNextPlayerIndex() {
-    try {
-      int nextIndex = (currentPlayerIndex + 1) % players.length;
+    if (currentGuessSong == null) return false;
 
-      if (playUntilAllFinish) {
-        int safetyCounter = 0;
-        while (players[nextIndex].score >= cardsToWin &&
-            safetyCounter < players.length) {
-          nextIndex = (nextIndex + 1) % players.length;
-          safetyCounter++;
-        }
-      }
-      return nextIndex;
-    } catch (e) {
-      NotificationHelper.showError(t('error_next_player_turn'));
-      return 0;
+    Song guessedSong = currentGuessSong!;
+    currentGuessSong = null;
+
+    musicService.stopMusic();
+    isMusicPlaying = false;
+
+    Player p = currentPlayer;
+    p.turns++;
+    bool isCorrect = true;
+    int songYear = guessedSong.year;
+
+    if (index > 0 && p.timeline[index - 1].year > songYear) isCorrect = false;
+    if (index < p.timeline.length && p.timeline[index].year < songYear)
+      isCorrect = false;
+
+    if (isCorrect) {
+      p.timeline.insert(index, guessedSong);
+    } else {
+      p.wrongGuesses++;
+      unplayedSongs.insert(0, guessedSong);
     }
+
+    onGuessEvaluated?.call(isCorrect, guessedSong);
+
+    networkService.broadcastState({
+      'type': 'GUESS_RESULT',
+      'isCorrect': isCorrect,
+      'song': guessedSong.toJson(),
+    });
+
+    _broadcastGameState();
+    return isCorrect;
   }
 
   void advanceToNextTurn(int nextIndex) {
+    if (networkService.isClient) return;
     currentPlayerIndex = nextIndex;
     drawNextSong();
   }
 
-  bool guessPlacement(int index) {
-    try {
-      if (currentGuessSong == null) return false;
-
-      Song guessedSong = currentGuessSong!;
-      currentGuessSong = null;
-
-      musicService.stopMusic();
-
-      Player p = currentPlayer;
-      p.turns++;
-
-      bool isCorrect = true;
-      int songYear = guessedSong.year;
-
-      if (index > 0 && p.timeline[index - 1].year > songYear) isCorrect = false;
-      if (index < p.timeline.length && p.timeline[index].year < songYear)
-        isCorrect = false;
-
-      if (isCorrect) {
-        p.timeline.insert(index, guessedSong);
-      } else {
-        p.wrongGuesses++;
-        unplayedSongs.insert(0, guessedSong);
-      }
-
-      notifyListeners();
-      return isCorrect;
-    } catch (e) {
-      NotificationHelper.showError(t('error_adding_song'));
-      return false;
-    }
-  }
-
   Future<bool> playMusic() async {
-    try {
-      if (currentGuessSong == null || isMusicLoading) return false;
-      isMusicLoading = true;
-      notifyListeners();
-
-      await musicService.playSongSnippet(currentGuessSong!);
-
-      isMusicLoading = false;
-      notifyListeners();
+    if (networkService.isClient) {
+      networkService.sendAction({'type': 'PLAY_MUSIC'});
       return true;
-    } catch (e) {
-      NotificationHelper.showError(t('error_playing_music'));
-      return false;
     }
+
+    if (currentGuessSong == null || isMusicLoading || isMusicPlaying)
+      return false;
+    isMusicLoading = true;
+    notifyListeners();
+
+    await musicService.playSongSnippet(currentGuessSong!);
+
+    isMusicLoading = false;
+    isMusicPlaying = true;
+    _broadcastGameState();
+    return true;
   }
 
   void stopMusic() {
+    if (networkService.isClient) {
+      networkService.sendAction({'type': 'STOP_MUSIC'});
+      return;
+    }
     musicService.stopMusic();
+    isMusicPlaying = false;
+    _broadcastGameState();
+  }
+
+  void _broadcastLobbyState() {
+    if (!networkService.isHost) return;
+    networkService.broadcastState({
+      'type': 'LOBBY_UPDATE',
+      'players': playerNames,
+    });
+  }
+
+  void _broadcastGameState() {
+    if (!networkService.isHost) {
+      notifyListeners();
+      return;
+    }
+    Map<String, dynamic> state = {
+      'type': 'GAME_STATE',
+      'currentPlayerIndex': currentPlayerIndex,
+      'isGameLoading': isGameLoading,
+      'currentGuessSong': currentGuessSong?.toJson(),
+      'players': players.map((p) => p.toJson()).toList(),
+      'isMusicPlaying': isMusicPlaying,
+      'totalSongs': totalSongs,
+      'unplayedCount': unplayedSongs.length,
+    };
+    networkService.broadcastState(state);
+    notifyListeners();
+  }
+
+  void _applyStateFromHost(Map<String, dynamic> state) {
+    if (state['type'] == 'LOBBY_UPDATE') {
+      playerNames = List<String>.from(state['players']);
+      notifyListeners();
+      return;
+    }
+
+    if (state['type'] == 'GUESS_RESULT') {
+      bool isCorrect = state['isCorrect'];
+      Song song = Song.fromJson(state['song']);
+      onGuessEvaluated?.call(isCorrect, song);
+      return;
+    }
+
+    if (state['type'] == 'GAME_END') {
+      if (state['players'] != null) {
+        players = (state['players'] as List)
+            .map((p) => Player.fromJson(p))
+            .toList();
+      }
+      onGameEnd?.call();
+      return;
+    }
+
+    if (state['type'] == 'GAME_STATE') {
+      currentPlayerIndex = state['currentPlayerIndex'] ?? 0;
+      isGameLoading = state['isGameLoading'] ?? false;
+      isMusicPlaying = state['isMusicPlaying'] ?? false;
+
+      totalSongs = state['totalSongs'] ?? 0;
+      _clientUnplayedCount = state['unplayedCount'] ?? 0;
+
+      if (state['currentGuessSong'] != null) {
+        currentGuessSong = Song.fromJson(state['currentGuessSong']);
+      } else {
+        currentGuessSong = null;
+      }
+
+      if (state['players'] != null) {
+        players = (state['players'] as List)
+            .map((p) => Player.fromJson(p))
+            .toList();
+      }
+      notifyListeners();
+    }
+  }
+
+  void _handleClientAction(Map<String, dynamic> action) {
+    if (action['type'] == 'JOIN') {
+      String newName = action['name'];
+      if (!playerNames.contains(newName)) {
+        playerNames.add(newName);
+        _broadcastLobbyState();
+      }
+    } else if (action['type'] == 'PLAY_MUSIC') {
+      playMusic();
+    } else if (action['type'] == 'STOP_MUSIC') {
+      stopMusic();
+    } else if (action['type'] == 'GUESS') {
+      int guessedIndex = action['index'];
+      guessPlacement(guessedIndex);
+    }
+  }
+
+  bool checkGameEnd() {
+    if (players.isEmpty) return false;
+    if (!playUntilAllFinish && players.any((p) => p.score >= cardsToWin))
+      return true;
+    if (playUntilAllFinish && players.every((p) => p.score >= cardsToWin))
+      return true;
+    if (unplayedSongs.isEmpty && currentGuessSong == null) return true;
+    return false;
+  }
+
+  int getNextPlayerIndex() {
+    if (players.isEmpty) return 0;
+    int nextIndex = (currentPlayerIndex + 1) % players.length;
+    if (playUntilAllFinish) {
+      int safetyCounter = 0;
+      while (players[nextIndex].score >= cardsToWin &&
+          safetyCounter < players.length) {
+        nextIndex = (nextIndex + 1) % players.length;
+        safetyCounter++;
+      }
+    }
+    return nextIndex;
   }
 
   List<Player> getLeaderboard() {
-    try {
-      List<Player> leaderboard = List.from(players);
-      leaderboard.sort((a, b) {
-        int scoreComparison = b.score.compareTo(a.score);
-        if (scoreComparison != 0) return scoreComparison;
+    List<Player> leaderboard = List.from(players);
+    leaderboard.sort((a, b) {
+      int scoreComparison = b.score.compareTo(a.score);
+      if (scoreComparison != 0) return scoreComparison;
+      if (playUntilAllFinish) {
+        int turnComparison = a.turns.compareTo(b.turns);
+        if (turnComparison != 0) return turnComparison;
+      }
+      return a.wrongGuesses.compareTo(b.wrongGuesses);
+    });
+    return leaderboard;
+  }
 
-        if (playUntilAllFinish) {
-          int turnComparison = a.turns.compareTo(b.turns);
-          if (turnComparison != 0) return turnComparison;
-        }
-
-        return a.wrongGuesses.compareTo(b.wrongGuesses);
-      });
-      return leaderboard;
-    } catch (e) {
-      NotificationHelper.showError(t('error_opening_leaderboard'));
-      return List.from(players);
-    }
+  @override
+  void dispose() {
+    networkService.closeConnections();
+    super.dispose();
   }
 }

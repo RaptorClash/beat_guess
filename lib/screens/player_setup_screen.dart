@@ -1,13 +1,18 @@
 import 'package:beat_guess/services/language_service.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'game_screen.dart';
 import 'api_settings_screen.dart';
 import '../services/spotify_auth_service.dart';
 import '../services/playlist_service.dart';
 import '../utils/NotificationHelper.dart';
+import '../controllers/game_controller.dart';
 
 class PlayerSetupScreen extends StatefulWidget {
-  const PlayerSetupScreen({super.key});
+  final bool isHost;
+  final String? hostName;
+
+  const PlayerSetupScreen({super.key, required this.isHost, this.hostName});
 
   @override
   State<PlayerSetupScreen> createState() => _PlayerSetupScreenState();
@@ -17,7 +22,9 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
   final SpotifyAuthService _authService = SpotifyAuthService();
   final PlaylistService _playlistService = PlaylistService();
 
-  final List<String> players = [];
+  late GameController
+  _controller; // Wir nutzen den Controller jetzt direkt hier!
+
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _playlistController = TextEditingController();
 
@@ -30,6 +37,14 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
   @override
   void initState() {
     super.initState();
+    _controller = GameController();
+
+    if (widget.isHost && widget.hostName != null) {
+      _controller.startAsHost(widget.hostName!);
+      _controller.addListener(() {
+        if (mounted) setState(() {});
+      });
+    }
     _loadData();
   }
 
@@ -72,9 +87,7 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  onPressed: () => Navigator.of(
-                    context,
-                  ).pop(true), // Schließt Dialog und erlaubt "Zurück"
+                  onPressed: () => Navigator.of(context).pop(true),
                   child: Text(
                     t('yes_leave'),
                     style: const TextStyle(fontWeight: FontWeight.bold),
@@ -92,41 +105,30 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
       bool loggedIn = await _authService.checkAndRefreshLogin();
       List<Map<String, String>> playlists = await _playlistService
           .getSavedPlaylists();
-
-      if (mounted) {
+      if (mounted)
         setState(() {
           _isLoggedIn = loggedIn;
           _savedPlaylists = playlists;
         });
-      }
     } catch (e) {
       NotificationHelper.showError(t('error_loading_player_setup_screen'));
     }
   }
 
   void addPlayer() {
-    try {
-      String newName = _nameController.text.trim();
-      if (newName.isNotEmpty) {
-        if (players.contains(newName)) {
-          NotificationHelper.showError(t('username_already_exists'));
-          return;
-        }
-
-        setState(() {
-          players.add(newName);
-          _nameController.clear();
-        });
-      }
-    } catch (e) {
-      NotificationHelper.showError(t('error_adding_player'));
+    String newName = _nameController.text.trim();
+    if (newName.isNotEmpty && !_controller.playerNames.contains(newName)) {
+      setState(() {
+        _controller.playerNames.add(newName);
+        _nameController.clear();
+      });
     }
   }
 
   Future<void> startGame() async {
     try {
-      if (players.isEmpty) players.add(t('solo_player'));
-
+      if (_controller.playerNames.isEmpty)
+        _controller.playerNames.add(t('solo_player'));
       setState(() => _isStarting = true);
       String url = _playlistController.text.trim();
 
@@ -144,31 +146,34 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
 
       if (!mounted) return;
 
-      Navigator.push(
+      // Wir übergeben dem Controller unsere Settings
+      _controller.cardsToWin = _cardsToWin;
+      _controller.playlistUrl = url;
+      _controller.playUntilAllFinish = _playUntilAllFinish;
+
+      await _controller.initGame(() {
+        NotificationHelper.showError("Playlist Fehler");
+      });
+
+      if (!mounted) return;
+      Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => GameScreen(
-            playerNames: players,
-            cardsToWin: _cardsToWin,
-            playlistUrl: url,
-            playUntilAllFinish: _playUntilAllFinish,
+          builder: (context) => ChangeNotifierProvider.value(
+            value: _controller,
+            child: GameScreen(isHost: widget.isHost),
           ),
         ),
-      ).then((_) {
-        if (mounted) setState(() => _isStarting = false);
-      });
+      );
     } catch (e) {
       NotificationHelper.showError(t('error_starting_game'));
+      if (mounted) setState(() => _isStarting = false);
     }
   }
 
   Future<void> _deletePlaylist(String url) async {
     await _playlistService.deletePlaylist(url);
-
-    if (_playlistController.text == url) {
-      _playlistController.clear();
-    }
-
+    if (_playlistController.text == url) _playlistController.clear();
     _loadData();
   }
 
@@ -178,18 +183,14 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
       canPop: false,
       onPopInvoked: (didPop) async {
         if (didPop) return;
-
         final bool shouldLeave = await _showExitWarning('exit_setup_warning');
-
-        if (shouldLeave && context.mounted) {
-          Navigator.of(context).pop();
-        }
+        if (shouldLeave && context.mounted) Navigator.of(context).pop();
       },
       child: Scaffold(
         appBar: AppBar(
           title: Text(
             t('new_game'),
-            style: TextStyle(fontWeight: FontWeight.bold),
+            style: const TextStyle(fontWeight: FontWeight.bold),
           ),
           centerTitle: true,
           elevation: 0,
@@ -201,7 +202,6 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
                 smallSize: 12,
                 child: const Icon(Icons.settings),
               ),
-              tooltip: 'API Setup',
               onPressed: () async {
                 await Navigator.push(
                   context,
@@ -219,6 +219,37 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // LOBBY CODE (Nur für Host)
+              if (widget.isHost) ...[
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.deepPurple,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    children: [
+                      const Text(
+                        "Raum-Code für Freunde:",
+                        style: TextStyle(color: Colors.white70, fontSize: 16),
+                      ),
+                      const SizedBox(height: 8),
+                      _controller.hostCode == null
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : Text(
+                              _controller.hostCode!,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 40,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 4,
+                              ),
+                            ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
               _buildPlayerCard(),
               const SizedBox(height: 20),
               _buildRulesCard(),
@@ -243,54 +274,56 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
           children: [
             Row(
               children: [
-                Icon(Icons.people_alt, color: Colors.deepPurple),
-                SizedBox(width: 10),
+                const Icon(Icons.people_alt, color: Colors.deepPurple),
+                const SizedBox(width: 10),
                 Text(
                   t('whos_in'),
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _nameController,
-                    decoration: InputDecoration(
-                      labelText: "${t('player_name')}",
-                      border: OutlineInputBorder(
+
+            if (!widget.isHost)
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _nameController,
+                      decoration: InputDecoration(
+                        labelText: "${t('player_name')}",
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onSubmitted: (_) => addPlayer(),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton(
+                    onPressed: addPlayer,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.deepPurple,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.all(14),
+                      shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
                     ),
-                    onSubmitted: (_) => addPlayer(),
+                    child: const Icon(Icons.add),
                   ),
-                ),
-                const SizedBox(width: 12),
-                ElevatedButton(
-                  onPressed: addPlayer,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepPurple,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.all(14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: const Icon(Icons.add),
-                ),
-              ],
-            ),
-            if (players.isNotEmpty) ...[
-              const SizedBox(height: 16),
+                ],
+              ),
+
+            if (_controller.playerNames.isNotEmpty) ...[
+              if (!widget.isHost) const SizedBox(height: 16),
               Wrap(
                 spacing: 8.0,
                 runSpacing: 8.0,
-                children: players.asMap().entries.map((entry) {
+                children: _controller.playerNames.asMap().entries.map((entry) {
                   int idx = entry.key;
                   String name = entry.value;
                   return InputChip(
@@ -309,8 +342,15 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
                       ),
                     ),
                     backgroundColor: Colors.deepPurple.shade50,
-                    deleteIconColor: Colors.red.shade400,
-                    onDeleted: () => setState(() => players.removeAt(idx)),
+                    // Host kann keine WLAN-Spieler löschen, Singleplayer schon
+                    deleteIconColor: widget.isHost
+                        ? Colors.transparent
+                        : Colors.red.shade400,
+                    onDeleted: widget.isHost
+                        ? null
+                        : () => setState(
+                            () => _controller.playerNames.removeAt(idx),
+                          ),
                   );
                 }).toList(),
               ),
@@ -318,7 +358,7 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
               const SizedBox(height: 16),
               Text(
                 t('no_players_added'),
-                style: TextStyle(
+                style: const TextStyle(
                   color: Colors.grey,
                   fontStyle: FontStyle.italic,
                 ),
@@ -330,6 +370,7 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
     );
   }
 
+  // --- DER REST BLEIBT EXAKT WIE VORHER ---
   Widget _buildRulesCard() {
     return Card(
       elevation: 4,
@@ -341,18 +382,21 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
           children: [
             Row(
               children: [
-                Icon(Icons.tune, color: Colors.deepPurple),
-                SizedBox(width: 10),
+                const Icon(Icons.tune, color: Colors.deepPurple),
+                const SizedBox(width: 10),
                 Text(
                   t('game_rules'),
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 20),
             Text(
               t('points_to_win'),
-              style: TextStyle(
+              style: const TextStyle(
                 fontWeight: FontWeight.bold,
                 color: Colors.black87,
               ),
@@ -384,7 +428,7 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
             ),
             Text(
               t('game_mode'),
-              style: TextStyle(
+              style: const TextStyle(
                 fontWeight: FontWeight.bold,
                 color: Colors.black87,
               ),
@@ -430,7 +474,7 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
             ),
             Text(
               t('playlist'),
-              style: TextStyle(
+              style: const TextStyle(
                 fontWeight: FontWeight.bold,
                 color: Colors.black87,
               ),
@@ -449,17 +493,13 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
                   icon: const Icon(Icons.clear),
                   onPressed: () => _playlistController.clear(),
                 ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
               ),
             ),
             if (_savedPlaylists.isNotEmpty) ...[
               const SizedBox(height: 24),
               Text(
                 t('playlist_library'),
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: Colors.black87,
@@ -475,16 +515,12 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
                       const SizedBox(width: 12),
                   itemBuilder: (context, index) {
                     var playlist = _savedPlaylists[index];
-                    String imageUrl = playlist['imageUrl'] ?? "";
                     bool isSelected =
                         _playlistController.text == playlist['url'];
-
                     return GestureDetector(
-                      onTap: () {
-                        setState(
-                          () => _playlistController.text = playlist['url']!,
-                        );
-                      },
+                      onTap: () => setState(
+                        () => _playlistController.text = playlist['url']!,
+                      ),
                       child: Container(
                         width: 100,
                         decoration: BoxDecoration(
@@ -493,7 +529,6 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Stack erlaubt es uns, das X über das Bild zu legen
                             Stack(
                               children: [
                                 Container(
@@ -505,44 +540,32 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
                                           : Colors.transparent,
                                       width: 3,
                                     ),
-                                    boxShadow: const [
-                                      BoxShadow(
-                                        color: Colors.black12,
-                                        blurRadius: 4,
-                                        offset: Offset(0, 2),
-                                      ),
-                                    ],
                                   ),
                                   child: ClipRRect(
                                     borderRadius: BorderRadius.circular(9),
-                                    child: imageUrl.isNotEmpty
+                                    child:
+                                        (playlist['imageUrl'] ?? "").isNotEmpty
                                         ? Image.network(
-                                            imageUrl,
+                                            playlist['imageUrl']!,
                                             width: 100,
                                             height: 100,
                                             fit: BoxFit.cover,
-                                            errorBuilder:
-                                                (context, error, stackTrace) =>
-                                                    _buildPlaceholderImage(),
+                                            errorBuilder: (c, e, s) =>
+                                                _buildPlaceholderImage(),
                                           )
                                         : _buildPlaceholderImage(),
                                   ),
                                 ),
-                                // Das "X" Icon zum Entfernen oben rechts
                                 Positioned(
                                   top: 6,
                                   right: 6,
                                   child: GestureDetector(
-                                    onTap: () {
-                                      // Verhindert, dass das Antippen des X auch die Playlist auswählt
-                                      _deletePlaylist(playlist['url']!);
-                                    },
+                                    onTap: () =>
+                                        _deletePlaylist(playlist['url']!),
                                     child: Container(
                                       padding: const EdgeInsets.all(4),
                                       decoration: BoxDecoration(
-                                        color: Colors.black.withOpacity(
-                                          0.6,
-                                        ), // Halbtransparenter Kreis
+                                        color: Colors.black.withOpacity(0.6),
                                         shape: BoxShape.circle,
                                       ),
                                       child: const Icon(
@@ -611,7 +634,7 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
             ? const CircularProgressIndicator(color: Colors.white)
             : Text(
                 t('start_game'),
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1.2,

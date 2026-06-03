@@ -75,9 +75,13 @@
             <string>com.deinname.beatguess</string> <!-- Kannst du so lassen oder anpassen -->
             <key>CFBundleURLSchemes</key>
             <array>
-                <!-- Das ist unser Schema aus dem Dart-Code! -->
                 <string>beatguess</string> 
             </array>
+			<key>NSLocalNetworkUsageDescription</key>
+			<string>Die App benötigt Zugriff auf das lokale WLAN, damit du mit deinen Freunden spielen kannst.</string>
+
+			<key>NSLocationWhenInUseUsageDescription</key>
+			<string>Die App benötigt diese Berechtigung, um deine lokale IP-Adresse für den Raum-Code auszulesen.</string>
         </dict>
     </array>
 </dict>
