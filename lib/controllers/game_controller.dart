@@ -220,15 +220,23 @@ class GameController extends ChangeNotifier {
 
     if (currentGuessSong == null || isMusicLoading || isMusicPlaying)
       return false;
+
     isMusicLoading = true;
     notifyListeners();
 
-    await musicService.playSongSnippet(currentGuessSong!);
+    bool success = await musicService.playSongSnippet(currentGuessSong!);
 
     isMusicLoading = false;
-    isMusicPlaying = true;
+
+    if (success) {
+      isMusicPlaying =
+          true; 
+    } else {
+      isMusicPlaying = false;
+    }
+
     _broadcastGameState();
-    return true;
+    return success;
   }
 
   void stopMusic() {

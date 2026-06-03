@@ -10,10 +10,10 @@ class MusicService {
   bool isPlaying = false;
   Timer? _playbackTimer;
 
-  Future<void> playSongSnippet(Song song) async {
+  Future<bool> playSongSnippet(Song song) async {
     try {
       if (song.spotifyUri.isEmpty) {
-        return;
+        return false;
       }
 
       try {
@@ -44,24 +44,28 @@ class MusicService {
               stopMusic();
             }
           });
+
+          return true;
         } else if (response.statusCode == 404) {
-          NotificationHelper.showError(
-            t('error_no_active_device_found'),
-          );
+          NotificationHelper.showError(t('error_no_active_device_found'));
+          return false;
         } else {
           NotificationHelper.showError(
             t('error_during_spotify_playback', {
-              'statusCode': response.statusCode.toString()
+              'statusCode': response.statusCode.toString(),
             }),
           );
+          return false;
         }
       } catch (e) {
-        NotificationHelper.showError(t('error_in_musicservice', {
-          'error': e.toString()
-        }));
+        NotificationHelper.showError(
+          t('error_in_musicservice', {'error': e.toString()}),
+        );
+        return false;
       }
     } catch (e) {
       NotificationHelper.showError(t('error_while_playing_song'));
+      return false;
     }
   }
 
