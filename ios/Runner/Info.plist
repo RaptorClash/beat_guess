@@ -84,5 +84,9 @@
 			<string>Die App benötigt diese Berechtigung, um deine lokale IP-Adresse für den Raum-Code auszulesen.</string>
         </dict>
     </array>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+    <string>Die App benötigt Bluetooth, um Offline-Lobbys in deiner Nähe zu finden.</string>
+    <key>NSBluetoothPeripheralUsageDescription</key>
+    <string>Die App benötigt Bluetooth, damit du ein Offline-Spiel hosten kannst.</string>
 </dict>
 </plist>
