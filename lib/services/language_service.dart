@@ -123,6 +123,10 @@ class LanguageService extends ChangeNotifier {
       'error_adding_song': "Fehler beim eintragen des Songs",
       'error_playing_music': "Fehler beim abspielen der Musik",
       'error_opening_leaderboard': "Fehler beim öffnen der Rangliste",
+      'cant_create_lobby': 'Konnte Lobby nicht erstellen',
+      'no_host_found': 'Keinen Host in der Nähe gefunden',
+      'error_wlan_connection': 'WLAN Verbindung fehlgeschlagen',
+      'error_init': 'Fehler beim Initialisieren',
 
       //music_service.dart
       'error_no_active_device_found':
@@ -202,11 +206,36 @@ class LanguageService extends ChangeNotifier {
       'update': "Aktualisieren",
       'error_android_update': "Fehler beim Android-Update: {error}",
       'unable_open_url': "Konnte URL nicht öffnen:",
+
+      // start_screen.dart
+      'multiplayer': 'Multiplayer',
+      'network': 'Im eigenen Netzwerk',
+      'same_router': 'Alle Spieler sind mit demselben Router verbunden.',
+      'offline_bluetooth': 'Offline / Bluetooth',
+      'without_internet': 'Unterwegs spielen, ganz ohne Internet oder Router.',
+      'bluetooth_party': 'Bluetooth Party',
+      'info_bluetooth':
+          'Info: Stellt sicher, dass Bluetooth & Standort an euren Geräten aktiviert sind!',
+      'host_game': 'Spiel hosten',
+      'open_room_choose_playlist':
+          'Du wählst die Playlist und eröffnest den Raum',
+      'join_game': 'Spiel beitreten',
+      'search_for_near_host': 'Suche nach einem Host in der Nähe',
+      'connect_with_host_code': 'Verbinde dich mit dem Code des Hosts',
+      'whats_your_name': 'Wie heißt du?',
+      'your_playertag': 'Dein Spielername',
+      'open_lobby': 'Lobby eröffnen',
+      'search_lobby': 'Suche Lobby...',
+      'search_nearby_host':
+          'Suche nach Host in der Nähe... (kann etwas dauern)',
+      'search_and_join': 'Suchen & Beitreten',
+      'join_lobby': 'Lobby beitreten',
+      'room_code': 'Raum-Code',
+      'join': 'Beitreten',
     },
     'en': {
       'app_title': 'BeatGuess',
       'pass_and_play': 'Pass & Play (1 Device)',
-      'wlan_party': 'WLAN Party (Multiple Devices)',
       'coming_soon': 'Coming soon!',
       'language': 'Language Settings',
       'api_setup': 'Spotify API Setup',
@@ -234,6 +263,10 @@ class LanguageService extends ChangeNotifier {
       'solo_player': "Solo players",
       'error_starting_game': "Error starting the game.",
       'new_game': "New Game",
+      'playlist_error': 'Playlist Fehler',
+      'bluetooth_radar_active': 'Bluetooth Radar aktiv 📡',
+      'code_for_friends': 'Raum-Code für Freunde:',
+      'friends_can_join': 'Freunde können nun beitreten!',
 
       //api_settings_screen.dart
       'error_loading_api_settings_screens':

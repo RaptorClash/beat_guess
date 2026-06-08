@@ -1,16 +1,10 @@
-import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:nearby_connections/nearby_connections.dart';
-import 'package:permission_handler/permission_handler.dart'; // NEU: Der offizielle Permission-Manager
-
 import 'player_setup_screen.dart';
 import 'api_settings_screen.dart';
-import 'game_screen.dart';
 import '../services/language_service.dart';
 import '../controllers/game_controller.dart';
-import 'client_waiting_screen.dart'; 
+import 'client_waiting_screen.dart';
+import '../services/language_service.dart';
 
 class StartScreen extends StatefulWidget {
   const StartScreen({super.key});
@@ -38,14 +32,22 @@ class _StartScreenState extends State<StartScreen> {
         return PopScope(
           canPop: dismissible,
           child: AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            title: Text(LanguageService.instance.t('choose_language'), textAlign: TextAlign.center),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: Text(
+              LanguageService.instance.t('choose_language'),
+              textAlign: TextAlign.center,
+            ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 ListTile(
                   leading: const Text("🇩🇪", style: TextStyle(fontSize: 28)),
-                  title: const Text("Deutsch", style: TextStyle(fontWeight: FontWeight.bold)),
+                  title: const Text(
+                    "Deutsch",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                   onTap: () async {
                     await LanguageService.instance.setLanguage('de');
                     if (context.mounted) Navigator.pop(context);
@@ -54,7 +56,10 @@ class _StartScreenState extends State<StartScreen> {
                 const Divider(),
                 ListTile(
                   leading: const Text("🇬🇧", style: TextStyle(fontSize: 28)),
-                  title: const Text("English", style: TextStyle(fontWeight: FontWeight.bold)),
+                  title: const Text(
+                    "English",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                   onTap: () async {
                     await LanguageService.instance.setLanguage('en');
                     if (context.mounted) Navigator.pop(context);
@@ -71,7 +76,9 @@ class _StartScreenState extends State<StartScreen> {
   void _showSettingsMenu() {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (context) {
         return ListenableBuilder(
           listenable: LanguageService.instance,
@@ -83,10 +90,24 @@ class _StartScreenState extends State<StartScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 16), decoration: BoxDecoration(color: Colors.grey.shade400, borderRadius: BorderRadius.circular(10))),
+                    Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade400,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
                     ListTile(
-                      leading: const Icon(Icons.language, color: Colors.deepPurple),
-                      title: Text(t('language'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                      leading: const Icon(
+                        Icons.language,
+                        color: Colors.deepPurple,
+                      ),
+                      title: Text(
+                        t('language'),
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () {
                         Navigator.pop(context);
@@ -94,12 +115,23 @@ class _StartScreenState extends State<StartScreen> {
                       },
                     ),
                     ListTile(
-                      leading: const Icon(Icons.settings_input_component, color: Colors.deepPurple),
-                      title: Text(t('api_setup'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                      leading: const Icon(
+                        Icons.settings_input_component,
+                        color: Colors.deepPurple,
+                      ),
+                      title: Text(
+                        t('api_setup'),
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () {
                         Navigator.pop(context);
-                        Navigator.push(context, MaterialPageRoute(builder: (context) => const ApiSettingsScreen()));
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ApiSettingsScreen(),
+                          ),
+                        );
                       },
                     ),
                   ],
@@ -113,41 +145,57 @@ class _StartScreenState extends State<StartScreen> {
   }
 
   void _showConnectionMethodMenu() {
-    bool isDesktop = kIsWeb;
-    if (!kIsWeb) {
-      isDesktop = Platform.isWindows || Platform.isMacOS || Platform.isLinux;
-    }
-
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text("Verbindungsart wählen", textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text(
+            "Wie möchtet ihr spielen?",
+            textAlign: TextAlign.center,
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                leading: const Icon(Icons.wifi_rounded, color: Colors.deepPurple, size: 36),
-                title: const Text("Lokales WLAN", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                subtitle: const Text("Für PC, Mac & Handys. (Router oder Handy-Hotspot nutzen)"),
+                leading: const Icon(
+                  Icons.router,
+                  color: Colors.deepPurple,
+                  size: 36,
+                ),
+                title: Text(
+                  t('network'),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                ),
+                subtitle: Text(
+                  t('same_router'),
+                ),
                 onTap: () {
                   Navigator.pop(context);
                   _showHostOrJoinMenu(isBluetooth: false);
                 },
               ),
               const Divider(height: 30),
-              Opacity(
-                opacity: isDesktop ? 0.4 : 1.0,
-                child: ListTile(
-                  leading: const Icon(Icons.bluetooth_connected, color: Colors.blue, size: 36),
-                  title: const Text("Bluetooth / Offline", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                  subtitle: Text(isDesktop ? "Nur auf Smartphones verfügbar!" : "Ohne Router. Handys müssen im selben Raum sein."),
-                  onTap: isDesktop ? null : () {
-                    Navigator.pop(context);
-                    _showHostOrJoinMenu(isBluetooth: true);
-                  },
+              ListTile(
+                leading: const Icon(
+                  Icons.bluetooth,
+                  color: Colors.blue,
+                  size: 36,
                 ),
+                title: Text(
+                  t('offline_bluetooth'),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                ),
+                subtitle: Text(
+                  t('without_internet'),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showHostOrJoinMenu(isBluetooth: true);
+                },
               ),
             ],
           ),
@@ -161,14 +209,35 @@ class _StartScreenState extends State<StartScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text(isBluetooth ? "Bluetooth Lobby" : "WLAN Party"),
+          title: Text(isBluetooth ? t('bluetooth_party') : t('wlan_party')),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              if (isBluetooth)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade100,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    t('info_bluetooth'),
+                    style: TextStyle(
+                      color: Colors.blueAccent,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
               ListTile(
-                leading: const Icon(Icons.wifi_tethering, color: Colors.deepPurple),
-                title: const Text("Spiel hosten"),
-                subtitle: const Text("Du wählst die Playlist und eröffnest den Raum"),
+                leading: const Icon(
+                  Icons.wifi_tethering,
+                  color: Colors.deepPurple,
+                ),
+                title: Text(t('host_game')),
+                subtitle: Text(
+                  t('open_room_choose_playlist'),
+                ),
                 onTap: () {
                   Navigator.pop(context);
                   _showHostSetupDialog(isBluetooth: isBluetooth);
@@ -177,14 +246,18 @@ class _StartScreenState extends State<StartScreen> {
               const Divider(),
               ListTile(
                 leading: const Icon(Icons.login, color: Colors.deepPurple),
-                title: const Text("Spiel beitreten"),
-                subtitle: Text(isBluetooth ? "Suche nach Geräten in der Nähe" : "Verbinde dich mit dem Code des Hosts"),
+                title: Text(t('join_game')),
+                subtitle: Text(
+                  isBluetooth
+                      ? t('search_for_near_host')
+                      : t('connect_with_host_code'),
+                ),
                 onTap: () {
                   Navigator.pop(context);
                   if (isBluetooth) {
-                     _showBluetoothNameDialog(); 
+                    _showBluetoothJoinDialog();
                   } else {
-                     _showWlanJoinDialog();
+                    _showWlanJoinDialog();
                   }
                 },
               ),
@@ -200,76 +273,116 @@ class _StartScreenState extends State<StartScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Wie heißt du?"),
+        title: Text(t('whats_your_name')),
         content: TextField(
           controller: nameController,
-          decoration: const InputDecoration(hintText: "Dein Spielername", border: OutlineInputBorder()),
+          decoration: InputDecoration(
+            hintText: t('your_playertag'),
+            border: OutlineInputBorder(),
+          ),
         ),
         actions: [
           ElevatedButton(
-            onPressed: () async {
+            onPressed: () {
               if (nameController.text.trim().isNotEmpty) {
-                
-                // NEU: Der Host fragt vor dem Erstellen die nötigen Berechtigungen ab!
-                if (isBluetooth && Platform.isAndroid) {
-                  await [
-                    Permission.location,
-                    Permission.bluetooth,
-                    Permission.bluetoothAdvertise,
-                    Permission.bluetoothConnect,
-                    Permission.bluetoothScan,
-                    Permission.nearbyWifiDevices,
-                  ].request();
-                }
-
-                if (context.mounted) {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => PlayerSetupScreen(
-                        isHost: true,
-                        hostName: nameController.text.trim(),
-                        isBluetooth: isBluetooth, 
-                      ),
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => PlayerSetupScreen(
+                      isHost: true,
+                      hostName: nameController.text.trim(),
+                      isBluetooth: isBluetooth,
                     ),
-                  );
-                }
+                  ),
+                );
               }
             },
-            child: const Text("Lobby eröffnen"),
+            child: Text(t('open_lobby')),
           ),
         ],
       ),
     );
   }
 
-  void _showBluetoothNameDialog() {
+  void _showBluetoothJoinDialog() {
     final nameController = TextEditingController();
+    bool isConnecting = false;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Dein Spielername"),
-        content: TextField(controller: nameController, decoration: const InputDecoration(hintText: "Wie heißt du?", border: OutlineInputBorder())),
-        actions: [
-          ElevatedButton(
-            onPressed: () {
-              if (nameController.text.trim().isNotEmpty) {
-                Navigator.pop(context);
-                showDialog(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (context) => BluetoothRadarDialog(
-                    controller: GameController(),
-                    playerName: nameController.text.trim(),
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text(t('search_lobby')),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: nameController,
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(),
+                      labelText: t('your_playertag'),
+                      prefixIcon: Icon(Icons.person),
+                    ),
                   ),
-                );
-              }
-            },
-            child: const Text("Radar öffnen"),
-          )
-        ],
-      ),
+                  if (isConnecting)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 16.0),
+                      child: CircularProgressIndicator(),
+                    ),
+                  if (isConnecting)
+                    Padding(
+                      padding: EdgeInsets.only(top: 8.0),
+                      child: Text(
+                        t('search_nearby_host'),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isConnecting ? null : () => Navigator.pop(context),
+                  child: Text(t('cancel')),
+                ),
+                ElevatedButton(
+                  onPressed: isConnecting
+                      ? null
+                      : () async {
+                          if (nameController.text.trim().isEmpty) return;
+                          setState(() => isConnecting = true);
+
+                          final clientController = GameController();
+                          bool success = await clientController
+                              .joinAsClientBluetooth(
+                                nameController.text.trim(),
+                              );
+
+                          if (context.mounted) {
+                            setState(() => isConnecting = false);
+                            if (success) {
+                              Navigator.pop(context);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ClientWaitingScreen(
+                                    controller: clientController,
+                                  ),
+                                ),
+                              );
+                            }
+                          }
+                        },
+                  child: Text(t('search_and_join')),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -285,42 +398,73 @@ class _StartScreenState extends State<StartScreen> {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              title: const Text("WLAN Lobby beitreten"),
+              title: Text(t('join_lobby')),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   TextField(
                     controller: codeController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(border: OutlineInputBorder(), labelText: "Raum-Code (z.B. 178.45)", prefixIcon: Icon(Icons.numbers)),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(),
+                      labelText: t('room_code'),
+                      prefixIcon: Icon(Icons.numbers),
+                    ),
                   ),
                   const SizedBox(height: 12),
                   TextField(
                     controller: nameController,
-                    decoration: const InputDecoration(border: OutlineInputBorder(), labelText: "Dein Spielername", prefixIcon: Icon(Icons.person)),
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(),
+                      labelText: t('your_gamertag'),
+                      prefixIcon: Icon(Icons.person),
+                    ),
                   ),
-                  if (isConnecting) const Padding(padding: EdgeInsets.only(top: 16.0), child: CircularProgressIndicator()),
+                  if (isConnecting)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 16.0),
+                      child: CircularProgressIndicator(),
+                    ),
                 ],
               ),
               actions: [
-                TextButton(onPressed: isConnecting ? null : () => Navigator.pop(context), child: const Text("Abbrechen")),
+                TextButton(
+                  onPressed: isConnecting ? null : () => Navigator.pop(context),
+                  child: Text(t('cancel')),
+                ),
                 ElevatedButton(
-                  onPressed: isConnecting ? null : () async {
-                    if (codeController.text.trim().isEmpty || nameController.text.trim().isEmpty) return;
-                    setState(() => isConnecting = true);
+                  onPressed: isConnecting
+                      ? null
+                      : () async {
+                          if (codeController.text.trim().isEmpty ||
+                              nameController.text.trim().isEmpty)
+                            return;
+                          setState(() => isConnecting = true);
 
-                    final clientController = GameController();
-                    bool success = await clientController.joinAsClient(codeController.text.trim(), nameController.text.trim());
+                          final clientController = GameController();
+                          bool success = await clientController.joinAsClient(
+                            codeController.text.trim(),
+                            nameController.text.trim(),
+                          );
 
-                    if (context.mounted) {
-                      setState(() => isConnecting = false);
-                      if (success) {
-                        Navigator.pop(context);
-                        Navigator.push(context, MaterialPageRoute(builder: (context) => ClientWaitingScreen(controller: clientController)));
-                      }
-                    }
-                  },
-                  child: const Text("Beitreten"),
+                          if (context.mounted) {
+                            setState(() => isConnecting = false);
+                            if (success) {
+                              Navigator.pop(context);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ClientWaitingScreen(
+                                    controller: clientController,
+                                  ),
+                                ),
+                              );
+                            }
+                          }
+                        },
+                  child: Text(t('join')),
                 ),
               ],
             );
@@ -342,7 +486,10 @@ class _StartScreenState extends State<StartScreen> {
             backgroundColor: Colors.transparent,
             elevation: 0,
             actions: [
-              IconButton(icon: const Icon(Icons.settings, color: Colors.white, size: 28), onPressed: _showSettingsMenu),
+              IconButton(
+                icon: const Icon(Icons.settings, color: Colors.white, size: 28),
+                onPressed: _showSettingsMenu,
+              ),
               const SizedBox(width: 8),
             ],
           ),
@@ -352,147 +499,57 @@ class _StartScreenState extends State<StartScreen> {
               children: [
                 const Icon(Icons.headphones, size: 100, color: Colors.white),
                 const SizedBox(height: 20),
-                Text(t('app_title'), style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: Colors.white)),
+                Text(
+                  t('app_title'),
+                  style: const TextStyle(
+                    fontSize: 48,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
                 const SizedBox(height: 60),
-                
+
                 ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16), textStyle: const TextStyle(fontSize: 20)),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 16,
+                    ),
+                    textStyle: const TextStyle(fontSize: 20),
+                  ),
                   onPressed: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => const PlayerSetupScreen(isHost: false)));
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            const PlayerSetupScreen(isHost: false),
+                      ),
+                    );
                   },
                   icon: const Icon(Icons.people),
                   label: Text(t('pass_and_play')),
                 ),
                 const SizedBox(height: 20),
-                
+
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.deepPurple.shade300,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 16,
+                    ),
                     textStyle: const TextStyle(fontSize: 20),
                   ),
-                  onPressed: _showConnectionMethodMenu, 
+                  onPressed: _showConnectionMethodMenu,
                   icon: const Icon(Icons.sensors),
-                  label: const Text("Multiplayer"),
+                  label: Text(t('multiplayer')),
                 ),
               ],
             ),
           ),
         );
       },
-    );
-  }
-}
-
-// ==========================================================
-// DAS BLUETOOTH RADAR FÜR DIE FREUNDE
-// ==========================================================
-class BluetoothRadarDialog extends StatefulWidget {
-  final GameController controller;
-  final String playerName;
-
-  const BluetoothRadarDialog({super.key, required this.controller, required this.playerName});
-
-  @override
-  State<BluetoothRadarDialog> createState() => _BluetoothRadarDialogState();
-}
-
-class _BluetoothRadarDialogState extends State<BluetoothRadarDialog> {
-  final Map<String, String> _devices = {};
-  bool _isConnecting = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _startScan();
-  }
-
-  Future<void> _startScan() async {
-    // NEU: Fragt auf Android die Berechtigungen sauber über den Handler ab!
-    if (Platform.isAndroid) {
-      await [
-        Permission.location,
-        Permission.bluetooth,
-        Permission.bluetoothAdvertise,
-        Permission.bluetoothConnect,
-        Permission.bluetoothScan,
-        Permission.nearbyWifiDevices,
-      ].request();
-    }
-
-    await widget.controller.networkService.startScanning(
-      myName: widget.playerName,
-      onDeviceFound: (id, name) {
-        setState(() => _devices[id] = name);
-      },
-      onDeviceLost: (id) {
-        setState(() => _devices.remove(id));
-      },
-    );
-  }
-
-  @override
-  void dispose() {
-    widget.controller.networkService.stopScanning();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text("Radar 📡", textAlign: TextAlign.center),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text("Suche nach Lobbys in der Nähe..."),
-          const SizedBox(height: 16),
-          if (_devices.isEmpty)
-             const Padding(
-               padding: EdgeInsets.all(20.0),
-               child: CircularProgressIndicator(),
-             )
-          else
-            SizedBox(
-              height: 200,
-              width: double.maxFinite,
-              child: ListView.builder(
-                itemCount: _devices.length,
-                itemBuilder: (context, index) {
-                  String id = _devices.keys.elementAt(index);
-                  String hostName = _devices[id]!;
-
-                  return Card(
-                    color: Colors.deepPurple.shade50,
-                    child: ListTile(
-                      leading: const Icon(Icons.phone_android, color: Colors.deepPurple),
-                      title: Text("Lobby: $hostName", style: const TextStyle(fontWeight: FontWeight.bold)),
-                      trailing: _isConnecting ? const CircularProgressIndicator() : const Icon(Icons.login),
-                      onTap: _isConnecting ? null : () async {
-                        setState(() => _isConnecting = true);
-                        bool success = await widget.controller.joinAsBluetoothClient(id, widget.playerName);
-                        
-                        if (mounted) {
-                          setState(() => _isConnecting = false);
-                          if (success) {
-                            Navigator.pop(context);
-                            Navigator.push(context, MaterialPageRoute(builder: (_) => ClientWaitingScreen(controller: widget.controller)));
-                          }
-                        }
-                      },
-                    ),
-                  );
-                },
-              ),
-            ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text("Abbrechen"),
-        )
-      ],
     );
   }
 }

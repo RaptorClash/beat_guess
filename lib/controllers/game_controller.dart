@@ -5,6 +5,7 @@ import '../services/music_service.dart';
 import '../services/playlist_service.dart';
 import '../utils/NotificationHelper.dart';
 import '../services/network_service.dart';
+import '../services/language_service.dart';
 
 class GameController extends ChangeNotifier {
   final MusicService musicService = MusicService();
@@ -35,10 +36,11 @@ class GameController extends ChangeNotifier {
 
   Function(bool isCorrect, Song song)? onGuessEvaluated;
   VoidCallback? onGameEnd;
-  VoidCallback? onConnectionLost; // NEU
+  VoidCallback? onConnectionLost;
 
   Player get currentPlayer =>
       players.isNotEmpty ? players[currentPlayerIndex] : Player(name: 'Dummy');
+
   int get songsLeft =>
       (networkService.isClient ? _clientUnplayedCount : unplayedSongs.length) +
       (currentGuessSong != null ? 1 : 0);
@@ -91,17 +93,38 @@ class GameController extends ChangeNotifier {
     onConnectionLost?.call();
   }
 
-  // --- MULTIPLAYER LOBBY ---
-  Future<void> startAsHost(String hostName, {bool isBluetooth = false}) async {
+  Future<void> startAsHost(String hostName, {bool useBluetooth = false}) async {
     isMultiplayer = true;
     localPlayerName = hostName;
-    playerNames.add(hostName); 
+    playerNames.add(hostName);
 
-    hostCode = await networkService.startHosting(bluetooth: isBluetooth, name: hostName);
+    if (useBluetooth) {
+      hostCode = await networkService.startHostingBluetooth(hostName);
+    } else {
+      hostCode = await networkService.startHosting(name: hostName);
+    }
+
     if (hostCode == null) {
-      NotificationHelper.showError("Konnte Lobby nicht erstellen");
+      NotificationHelper.showError(t('cant_create_lobby'));
     }
     notifyListeners();
+  }
+
+  Future<bool> joinAsClientBluetooth(String clientName) async {
+    isMultiplayer = true;
+    localPlayerName = clientName;
+    isGameLoading = true;
+    notifyListeners();
+
+    bool success = await networkService.joinBluetoothGame(clientName);
+    if (success) {
+      networkService.sendAction({'type': 'JOIN', 'name': clientName});
+    } else {
+      isGameLoading = false;
+      NotificationHelper.showError(t('no_host_found'));
+      notifyListeners();
+    }
+    return success;
   }
 
   Future<bool> joinAsClient(String code, String clientName) async {
@@ -115,24 +138,7 @@ class GameController extends ChangeNotifier {
       networkService.sendAction({'type': 'JOIN', 'name': clientName});
     } else {
       isGameLoading = false;
-      NotificationHelper.showError("Verbindung fehlgeschlagen");
-      notifyListeners();
-    }
-    return success;
-  }
-
-  Future<bool> joinAsBluetoothClient(String endpointId, String clientName) async {
-    isMultiplayer = true;
-    localPlayerName = clientName;
-    isGameLoading = true;
-    notifyListeners();
-
-    bool success = await networkService.joinBluetoothGame(endpointId, clientName);
-    if (success) {
-      networkService.sendAction({'type': 'JOIN', 'name': clientName});
-    } else {
-      isGameLoading = false;
-      NotificationHelper.showError("Verbindung fehlgeschlagen");
+      NotificationHelper.showError(t('error_wlan_connection'));
       notifyListeners();
     }
     return success;
@@ -159,14 +165,15 @@ class GameController extends ChangeNotifier {
       unplayedSongs.shuffle();
 
       for (var player in players) {
-        if (unplayedSongs.isNotEmpty)
+        if (unplayedSongs.isNotEmpty) {
           player.timeline.add(unplayedSongs.removeLast());
+        }
       }
 
       isGameLoading = false;
       drawNextSong();
     } catch (e) {
-      NotificationHelper.showError('Fehler beim Initialisieren');
+      NotificationHelper.showError(t('error_init'));
     }
   }
 
@@ -200,8 +207,9 @@ class GameController extends ChangeNotifier {
     int songYear = guessedSong.year;
 
     if (index > 0 && p.timeline[index - 1].year > songYear) isCorrect = false;
-    if (index < p.timeline.length && p.timeline[index].year < songYear)
+    if (index < p.timeline.length && p.timeline[index].year < songYear) {
       isCorrect = false;
+    }
 
     if (isCorrect) {
       p.timeline.insert(index, guessedSong);
@@ -234,8 +242,9 @@ class GameController extends ChangeNotifier {
       return true;
     }
 
-    if (currentGuessSong == null || isMusicLoading || isMusicPlaying)
+    if (currentGuessSong == null || isMusicLoading || isMusicPlaying) {
       return false;
+    }
 
     isMusicLoading = true;
     notifyListeners();
@@ -245,8 +254,7 @@ class GameController extends ChangeNotifier {
     isMusicLoading = false;
 
     if (success) {
-      isMusicPlaying =
-          true; 
+      isMusicPlaying = true;
     } else {
       isMusicPlaying = false;
     }
@@ -271,6 +279,7 @@ class GameController extends ChangeNotifier {
       'type': 'LOBBY_UPDATE',
       'players': playerNames,
     });
+    notifyListeners();
   }
 
   void _broadcastGameState() {
@@ -358,10 +367,12 @@ class GameController extends ChangeNotifier {
 
   bool checkGameEnd() {
     if (players.isEmpty) return false;
-    if (!playUntilAllFinish && players.any((p) => p.score >= cardsToWin))
+    if (!playUntilAllFinish && players.any((p) => p.score >= cardsToWin)) {
       return true;
-    if (playUntilAllFinish && players.every((p) => p.score >= cardsToWin))
+    }
+    if (playUntilAllFinish && players.every((p) => p.score >= cardsToWin)) {
       return true;
+    }
     if (unplayedSongs.isEmpty && currentGuessSong == null) return true;
     return false;
   }

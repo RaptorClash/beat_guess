@@ -88,5 +88,13 @@
     <string>Die App benötigt Bluetooth, um Offline-Lobbys in deiner Nähe zu finden.</string>
     <key>NSBluetoothPeripheralUsageDescription</key>
     <string>Die App benötigt Bluetooth, damit du ein Offline-Spiel hosten kannst.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+    <string>Wird benötigt, um Geräte in der Nähe zu scannen.</string>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>Wird für direkte Offline-Verbindungen benötigt.</string>
+    <key>NSBonjourServices</key>
+    <array>
+        <string>_none._tcp</string>
+    </array>
 </dict>
 </plist>

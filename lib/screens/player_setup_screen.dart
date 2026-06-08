@@ -29,7 +29,7 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
   final PlaylistService _playlistService = PlaylistService();
 
   late GameController
-  _controller; // Wir nutzen den Controller jetzt direkt hier!
+  _controller;
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _playlistController = TextEditingController();
@@ -48,7 +48,7 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
     if (widget.isHost && widget.hostName != null) {
       _controller.startAsHost(
         widget.hostName!,
-        isBluetooth: widget.isBluetooth,
+        useBluetooth: widget.isBluetooth,
       );
       _controller.addListener(() {
         if (mounted) setState(() {});
@@ -155,13 +155,12 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
 
       if (!mounted) return;
 
-      // Wir übergeben dem Controller unsere Settings
       _controller.cardsToWin = _cardsToWin;
       _controller.playlistUrl = url;
       _controller.playUntilAllFinish = _playUntilAllFinish;
 
       await _controller.initGame(() {
-        NotificationHelper.showError("Playlist Fehler");
+        NotificationHelper.showError(t('playlist_error'));
       });
 
       if (!mounted) return;
@@ -228,8 +227,6 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // LOBBY CODE (Nur für Host)
-              // LOBBY CODE (Nur für Host)
               if (widget.isHost) ...[
                 Container(
                   padding: const EdgeInsets.all(16),
@@ -241,8 +238,8 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
                     children: [
                       Text(
                         widget.isBluetooth
-                            ? "Bluetooth Radar aktiv 📡"
-                            : "Raum-Code für Freunde:",
+                            ? t('bluetooth_radar_active')
+                            : t('code_for_friends'),
                         style: const TextStyle(
                           color: Colors.white70,
                           fontSize: 16,
@@ -252,8 +249,8 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
                       _controller.hostCode == null
                           ? const CircularProgressIndicator(color: Colors.white)
                           : (widget.isBluetooth
-                                ? const Text(
-                                    "Freunde können nun beitreten!",
+                                ? Text(
+                                    t('friends_can_join'),
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontSize: 18,
@@ -366,7 +363,6 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
                       ),
                     ),
                     backgroundColor: Colors.deepPurple.shade50,
-                    // Host kann keine WLAN-Spieler löschen, Singleplayer schon
                     deleteIconColor: widget.isHost
                         ? Colors.transparent
                         : Colors.red.shade400,
@@ -394,7 +390,6 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
     );
   }
 
-  // --- DER REST BLEIBT EXAKT WIE VORHER ---
   Widget _buildRulesCard() {
     return Card(
       elevation: 4,
