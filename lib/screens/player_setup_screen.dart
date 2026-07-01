@@ -5,7 +5,7 @@ import 'game_screen.dart';
 import 'api_settings_screen.dart';
 import '../services/spotify_auth_service.dart';
 import '../services/playlist_service.dart';
-import '../utils/NotificationHelper.dart';
+import '../utils/notification_helper.dart';
 import '../controllers/game_controller.dart';
 
 class PlayerSetupScreen extends StatefulWidget {

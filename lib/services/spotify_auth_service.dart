@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
-import '../utils/NotificationHelper.dart';
+import '../utils/notification_helper.dart';
 import '../services/language_service.dart';
 
 class SpotifyAuthService {

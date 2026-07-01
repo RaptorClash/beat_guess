@@ -6,7 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/foundation.dart';
-import '../utils/NotificationHelper.dart';
+import '../utils/notification_helper.dart';
 import '../services/language_service.dart';
 
 class UpdateService {

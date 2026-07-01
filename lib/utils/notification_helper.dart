@@ -6,22 +6,23 @@ final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey<Scaffol
 
 class NotificationHelper {
   
-  // 🔴 FEHLER-Meldung (Rot)
   static void showError(String message) {
     _showSnackBar(message, Colors.redAccent.shade700, Icons.error_outline);
   }
 
-  // 🟢 ERFOLGS-Meldung (Grün)
   static void showSuccess(String message) {
     _showSnackBar(message, Colors.green.shade700, Icons.check_circle_outline);
   }
 
-  // 🔵 INFO-Meldung (Blau) - z.B. für "Lade Daten..."
   static void showInfo(String message) {
     _showSnackBar(message, Colors.blue.shade700, Icons.info_outline);
   }
 
-  // Interne Hilfsmethode, die das Design für alle SnackBars zentral steuert
+  static void showWarning(String message) {
+    _showSnackBar(message, Colors.orange.shade800, Icons.warning_amber_rounded,
+    );
+  }
+
   static void _showSnackBar(String message, Color backgroundColor, IconData icon) {
     scaffoldMessengerKey.currentState?.hideCurrentSnackBar();
     

@@ -8,7 +8,7 @@ import '../widgets/player_switch_dialog.dart';
 import '../widgets/game_stats_banner.dart';
 import '../widgets/player_queue_list.dart';
 import '../controllers/game_controller.dart';
-import '../utils/NotificationHelper.dart';
+import '../utils/notification_helper.dart';
 import '../services/language_service.dart';
 
 class GameScreen extends StatefulWidget {

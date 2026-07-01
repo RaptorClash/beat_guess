@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:app_links/app_links.dart';
 import 'screens/start_screen.dart';
-import 'utils/NotificationHelper.dart';
+import 'utils/notification_helper.dart';
 import 'services/spotify_auth_service.dart';
 import 'services/url_helper_stub.dart'
     if (dart.library.html) 'services/url_helper_web.dart'
@@ -48,7 +48,7 @@ class BeatGuessApp extends StatelessWidget {
     return MaterialApp(
       title: 'BeatGuess',
       debugShowCheckedModeBanner: false,
-      scaffoldMessengerKey: scaffoldMessengerKey,
+      scaffoldMessengerKey: NotificationHelper.scaffoldMessengerKey,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,

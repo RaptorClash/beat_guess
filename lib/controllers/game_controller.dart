@@ -3,7 +3,7 @@ import '../models/song.dart';
 import '../models/player.dart';
 import '../services/music_service.dart';
 import '../services/playlist_service.dart';
-import '../utils/NotificationHelper.dart';
+import '../utils/notification_helper.dart';
 import '../services/network_service.dart';
 import '../services/language_service.dart';
 
@@ -154,10 +154,35 @@ class GameController extends ChangeNotifier {
         List<Song> fetchedSongs = await _playlistService.fetchSpotifyPlaylist(
           playlistUrl,
         );
+        
         if (fetchedSongs.isNotEmpty) {
+          
+          // --- NEU: Playlist Kapazitäts-Filter ---
+          int p = players.length;
+          int w = cardsToWin;
+          int s = fetchedSongs.length;
+
+          int absoluteMin = p + w - 1; 
+          int safeAll = p * w;
+          int safeNormal = p * (w - 1) + 1;
+
+          // 1. Check: Absolut unmöglich? -> Spielstart abbrechen!
+          if (s < absoluteMin) {
+            NotificationHelper.showError("Die Playlist hat nur $s Lieder. Für dieses Setup werden mindestens $absoluteMin Lieder benötigt. Spiel kann nicht beendet werden!");
+            onPlaylistLoadError();
+            return;
+          }
+
+          if (playUntilAllFinish && s < safeAll) {
+            NotificationHelper.showError("Warnung: Nur $s Lieder. Damit alle Spieler beenden können, bräuchte man $safeAll Lieder.");
+          } else if (!playUntilAllFinish && s < safeNormal) {
+            NotificationHelper.showError("Warnung: Nur $s Lieder. Wenn das Spiel sehr ausgeglichen ist, könnte der Stapel vorzeitig leer sein.");
+          }
+
           unplayedSongs = fetchedSongs;
         } else {
           onPlaylistLoadError();
+          return;
         }
       }
 
@@ -176,7 +201,6 @@ class GameController extends ChangeNotifier {
       NotificationHelper.showError(t('error_init'));
     }
   }
-
   void drawNextSong() {
     if (networkService.isClient) return;
     if (unplayedSongs.isNotEmpty) {
