@@ -1,0 +1,44 @@
+name: Build iOS IPA
+
+# Erlaubt es dir, den Build auf GitHub per Knopfdruck manuell zu starten
+on:
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    name: Build iOS App
+    runs-on: macos-latest
+    
+    steps:
+      # 1. Holt deinen Code von GitHub
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 2. Installiert Flutter auf dem Mac-Server
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      # 3. Lädt alle Packages herunter
+      - name: Install Dependencies
+        run: flutter pub get
+
+      # 4. Baut die App für iOS ohne Zertifikat
+      - name: Build iOS App
+        run: flutter build ios --release --no-codesign
+
+      # 5. Führt den "Payload-Trick" aus und verpackt es als .ipa
+      - name: Package into IPA
+        run: |
+          mkdir -p build/ios/iphoneos/Payload
+          mv build/ios/iphoneos/Runner.app build/ios/iphoneos/Payload/
+          cd build/ios/iphoneos
+          zip -qq -r BeatGuess.ipa Payload
+
+      # 6. Stellt dir die Datei als Download zur Verfügung
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BeatGuess-iOS
+          path: build/ios/iphoneos/BeatGuess.ipa
