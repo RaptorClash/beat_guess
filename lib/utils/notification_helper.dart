@@ -1,10 +1,9 @@
 // lib/utils/notification_helper.dart
 import 'package:flutter/material.dart';
 
-// Der globale Key bleibt genau gleich!
-final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
-
 class NotificationHelper {
+  // Verschiebe den Key HIERHIN und füge 'static' hinzu:
+  static final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
   
   static void showError(String message) {
     _showSnackBar(message, Colors.redAccent.shade700, Icons.error_outline);
